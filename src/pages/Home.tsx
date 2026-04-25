@@ -2,12 +2,13 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "@/lib/theme";
 import { Header } from "@/components/Header";
+import { InfiniteGrid } from "@/components/ui/the-infinite-grid";
 
 export default function Home() {
   const [employer, setEmployer] = useState("");
   const [role, setRole] = useState("");
   const navigate = useNavigate();
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
 
   const ready = employer.trim() && role.trim();
 
@@ -38,7 +39,17 @@ export default function Home() {
       fontFamily: "'Space Mono', 'Courier New', monospace",
       display: "flex",
       flexDirection: "column",
+      position: "relative",
     }}>
+      <InfiniteGrid
+        aria-hidden="true"
+        color={`${colors.accent}${theme === "dark" ? "66" : "26"}`}
+        backgroundColor={colors.bg}
+        vignetteColor={theme === "dark" ? "rgba(10,10,10,0.96)" : "rgba(245,245,240,0.72)"}
+        speed={0.16}
+        gridSize={44}
+        className="pointer-events-none fixed inset-0 z-0 h-screen"
+      />
       <Header />
 
       <main style={{
@@ -48,16 +59,28 @@ export default function Home() {
         justifyContent: "center",
         alignItems: "center",
         padding: "40px 24px 60px",
+        position: "relative",
+        zIndex: 1,
       }}>
         <div style={{ width: "100%", maxWidth: "520px" }}>
-          <p style={{
-            fontSize: "14px",
-            color: colors.textMuted,
-            letterSpacing: "0.18em",
-            marginBottom: "40px",
+          <div style={{
+            fontSize: "12px",
+            color: colors.accent,
+            letterSpacing: "0.22em",
+            marginBottom: "14px",
             textAlign: "center",
           }}>
-            YOUR CAREER IS AN ASSET. ACT ACCORDINGLY.
+            BUY / HOLD / SELL / SHORT
+          </div>
+          <p style={{
+            fontSize: "15px",
+            color: colors.textSecondary,
+            letterSpacing: "0.12em",
+            lineHeight: 1.7,
+            marginBottom: "34px",
+            textAlign: "center",
+          }}>
+            TURN YOUR CURRENT JOB INTO A MARKET VERDICT.
           </p>
 
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
@@ -106,24 +129,24 @@ export default function Home() {
               style={{
                 marginTop: "8px",
                 padding: "16px 24px",
-                background: "transparent",
+                background: ready ? colors.accent : "transparent",
                 border: `1px solid ${ready ? colors.accent : colors.border}`,
-                color: ready ? colors.accent : colors.textMuted,
+                color: ready ? colors.bg : colors.textMuted,
                 fontFamily: "inherit",
                 fontSize: "15px",
                 letterSpacing: "0.18em",
+                fontWeight: ready ? 700 : 400,
                 cursor: ready ? "pointer" : "not-allowed",
-                transition: "all 0.15s",
+                transition: "transform 0.15s, opacity 0.15s, border-color 0.15s",
+                opacity: ready ? 1 : 0.75,
               }}
               onMouseEnter={(e) => {
                 if (ready) {
-                  (e.target as HTMLButtonElement).style.background = colors.accent;
-                  (e.target as HTMLButtonElement).style.color = colors.bg;
+                  (e.target as HTMLButtonElement).style.transform = "translateY(-1px)";
                 }
               }}
               onMouseLeave={(e) => {
-                (e.target as HTMLButtonElement).style.background = "transparent";
-                (e.target as HTMLButtonElement).style.color = ready ? colors.accent : colors.textMuted;
+                (e.target as HTMLButtonElement).style.transform = "translateY(0)";
               }}
             >
               ANALYZE POSITION →
@@ -140,6 +163,8 @@ export default function Home() {
         fontSize: "12px",
         color: colors.textFaint,
         letterSpacing: "0.12em",
+        position: "relative",
+        zIndex: 1,
       }}>
         <span>NYSE · NASDAQ · CAREER EXCHANGE</span>
         <span>AI-POWERED · NOT FINANCIAL ADVICE</span>

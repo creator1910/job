@@ -12,6 +12,8 @@ export function Header() {
       height: "56px",
       flexShrink: 0,
       borderBottom: `1px solid ${colors.border}`,
+      position: "relative",
+      zIndex: 2,
     }}>
       <div style={{ fontSize: "26px", fontWeight: 700, letterSpacing: "0.05em", color: colors.text, flexShrink: 0 }}>
         <span style={{ color: colors.accent }}>$</span>JOB
@@ -34,8 +36,8 @@ export function Header() {
           title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
           style={{
             background: "transparent",
-            border: `1px solid ${colors.border}`,
-            color: colors.textMuted,
+            border: `1px solid ${colors.borderMuted}`,
+            color: colors.textDim,
             fontFamily: "inherit",
             fontSize: "12px",
             letterSpacing: "0.12em",
@@ -56,8 +58,8 @@ export function Header() {
           }}
           onMouseLeave={(e) => {
             const el = e.currentTarget;
-            el.style.borderColor = colors.border;
-            el.style.color = colors.textMuted;
+            el.style.borderColor = colors.borderMuted;
+            el.style.color = colors.textDim;
           }}
         >
           {theme === "dark" ? "◐ LIGHT" : "◑ DARK"}

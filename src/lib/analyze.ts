@@ -37,6 +37,8 @@ VERDICT DEFINITIONS:
 RULES:
 - First, write 2-3 sentences of raw analysis: what you're seeing in the data, the key signal, why you're leaning the direction you are. Be specific — company names, numbers, dates.
 - Then call career_verdict with your structured output.
+- The conviction field is signal strength, not a probability. It should answer: "How strongly does the evidence support this exact verdict?" Use 50-64 for weak/mixed evidence, 65-79 for solid directional evidence, 80-89 for strong evidence with multiple concrete signals, and 90-99 only for overwhelming evidence from many recent authoritative sources.
+- Always return 3-5 signals in career_verdict.signals. Do not return an empty signals array.
 - Never hedge. Never say "it depends." Give a verdict.
 - Never be balanced. Take a position.
 - Your signals must be specific: numbers, dates, executive names, product names. No vague sentiment.
@@ -50,7 +52,7 @@ const VERDICT_TOOL: Anthropic.Tool = {
     type: "object" as const,
     properties: {
       verdict: { type: "string", enum: ["BUY", "HOLD", "SELL", "SHORT"] },
-      conviction: { type: "integer", description: "Conviction percentage 50-99" },
+      conviction: { type: "integer", description: "Signal strength percentage 50-99: how strongly the evidence supports the verdict, not a probability" },
       signals: {
         type: "array",
         items: {
@@ -197,6 +199,8 @@ async function callClaude(
     ? sources.map((s, i) => `[${i + 1}] ${s.title} — ${s.url}`).join("\n")
     : "No sources available.";
 
+  let streamedAnalysis = "";
+
   const stream = client.messages.stream({
     model: "claude-haiku-4-5-20251001",
     max_tokens: 1024,
@@ -224,6 +228,7 @@ Give your verdict.`,
       event.delta.type === "text_delta" &&
       event.delta.text
     ) {
+      streamedAnalysis += event.delta.text;
       onToken(event.delta.text);
     }
   }
@@ -233,8 +238,63 @@ Give your verdict.`,
   if (!toolUse || toolUse.type !== "tool_use") throw new Error("No tool use in response");
 
   const parsed = toolUse.input as Verdict;
+  if (!streamedAnalysis.trim()) {
+    onToken(buildFallbackAnalystNote(parsed, researchContent, sources));
+  }
   parsed.conviction = Math.min(99, Math.max(50, parsed.conviction));
+  parsed.signals = normalizeSignals(parsed, researchContent, sources);
   return parsed;
+}
+
+function buildFallbackAnalystNote(
+  verdict: Verdict,
+  researchContent: string,
+  sources: TavilySource[]
+): string {
+  const sourceContext = sources.slice(0, 3).map((source) => source.title).join(" ");
+  const researchContext = researchContent.replace(/\s+/g, " ").trim();
+  const context = researchContext || sourceContext || "The available source set is thin, so the verdict is driven by limited but directional evidence.";
+  const trimmed = context.length > 420 ? `${context.slice(0, 417)}...` : context;
+  return `${trimmed}\n\nStructured verdict: ${verdict.verdict}. Signal strength reflects how strongly the available evidence supports that call, not the probability of a future event.`;
+}
+
+function normalizeSignals(
+  verdict: Verdict,
+  researchContent: string,
+  sources: TavilySource[]
+): Signal[] {
+  const existing = Array.isArray(verdict.signals)
+    ? verdict.signals.filter((signal) => signal?.text?.trim())
+    : [];
+
+  if (existing.length >= 3) return existing.slice(0, 5);
+
+  const fallbackDirection: Signal["direction"] =
+    verdict.verdict === "BUY" || verdict.verdict === "HOLD" ? "up" : "down";
+
+  const researchSentences = researchContent
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 45)
+    .slice(0, 5);
+
+  const sourceSignals = sources.slice(0, 5).map((source) => ({
+    direction: fallbackDirection,
+    text: source.title,
+    url: source.url,
+  }));
+
+  const researchSignals = researchSentences.map((sentence) => ({
+    direction: fallbackDirection,
+    text: sentence.length > 220 ? `${sentence.slice(0, 217)}...` : sentence,
+  }));
+
+  const combined = [...existing, ...researchSignals, ...sourceSignals];
+  const unique = combined.filter((signal, index, arr) =>
+    arr.findIndex((candidate) => candidate.text === signal.text) === index
+  );
+
+  return unique.slice(0, 5);
 }
 
 // ── Mock ────────────────────────────────────────────────────────────────────
@@ -244,17 +304,27 @@ const MOCK_SOURCES: TavilySource[] = [
   { title: "Meta Q1 2025 earnings: revenue $36.4B, up 16% YoY", url: "https://wsj.com/mock2", content: "" },
   { title: "Meta SWE hiring down 40% as AI automation expands", url: "https://bloomberg.com/mock3", content: "" },
   { title: "Meta open roles at 3-year low per LinkedIn data", url: "https://linkedin.com/mock4", content: "" },
+  { title: "Meta reorganizes infrastructure teams around AI efficiency targets", url: "https://reuters.com/mock5", content: "" },
+  { title: "Reality Labs losses widen while headcount planning tightens", url: "https://cnbc.com/mock6", content: "" },
+  { title: "Engineering managers told to raise performance bar in 2025 cycle", url: "https://businessinsider.com/mock7", content: "" },
+  { title: "Levels.fyi reports senior SWE compensation flattening after 2024 peak", url: "https://levels.fyi/mock8", content: "" },
+  { title: "LinkedIn hiring data shows fewer backend and product engineering postings", url: "https://linkedin.com/mock9", content: "" },
+  { title: "Investor memo emphasizes automation-driven operating leverage", url: "https://investor.fb.com/mock10", content: "" },
+  { title: "Layoffs.fyi tracks renewed tech workforce reductions across big tech", url: "https://layoffs.fyi/mock11", content: "" },
+  { title: "Meta expands internal AI coding tools across engineering org", url: "https://theverge.com/mock12", content: "" },
 ];
 
 const MOCK_VERDICT: Verdict = {
   verdict: "SHORT",
   conviction: 87,
   signals: [
-    { direction: "down", text: "3,600 layoffs in Q1 2025 targeting mid-level SWE; performance review window expanded to 18 months", url: "https://techcrunch.com/mock1" },
-    { direction: "down", text: "SWE open roles down 40% YoY; AI automation cited directly in Zuckerberg's Q1 letter", url: "https://bloomberg.com/mock3" },
-    { direction: "up", text: "Compensation still top-decile — golden handcuffs, not career capital" },
+    { direction: "down", text: "3,600 layoffs in Q1 2025 targeted mid-level engineering and product teams, while the performance review window expanded to 18 months; that means the company is still profitable, but individual SWE job security is being repriced downward.", url: "https://techcrunch.com/mock1" },
+    { direction: "down", text: "SWE open roles are down 40% YoY across backend, infrastructure, and product engineering; Meta is still hiring selectively, but the broad internal signal is fewer seats, higher bar, and more automation pressure.", url: "https://bloomberg.com/mock3" },
+    { direction: "down", text: "Internal AI coding tools are being rolled out across engineering, and Zuckerberg's Q1 operating memo frames automation as a margin-expansion lever rather than a support tool for growing headcount.", url: "https://investor.fb.com/mock10" },
+    { direction: "down", text: "LinkedIn and Levels.fyi data both point to a weaker labor market for senior SWE mobility: fewer comparable openings, flatter compensation bands, and longer interview loops for lateral moves.", url: "https://levels.fyi/mock8" },
+    { direction: "up", text: "Compensation remains top-decile and brand equity is still strong, but that is a retention trap in this setup: good cash flow today, deteriorating career capital tomorrow." },
   ],
-  summary: "Exit now. The stock is falling and you're holding.",
+  summary: "Exit before the brand premium stops compensating for the role decay.",
 };
 
 // ── Public API ───────────────────────────────────────────────────────────────
@@ -273,7 +343,7 @@ export async function analyzePosition(
     onProgress({ type: "search_complete", sourceCount: MOCK_SOURCES.length, sources: MOCK_SOURCES });
     await new Promise((r) => setTimeout(r, 200));
     onProgress({ type: "analyzing" });
-    const reasoning = "Revenue is strong at $36.4B but that doesn't translate to job security for SWEs. The layoffs pattern and hiring freeze tell the real story — automation is replacing headcount, not growing it. Profitable company, shrinking role.";
+    const reasoning = "Revenue is strong at $36.4B and the company is not in financial distress, but that is the wrong lens for this role. The career asset here is not Meta equity; it is the future value of being a software engineer inside this org. The data points in one direction: fewer SWE openings, more aggressive performance filtering, and explicit automation pressure from leadership. Compensation is still excellent, but the risk is that it becomes a premium paid to keep people in place while the role's leverage declines. This is a profitable company with a shrinking opportunity surface for generalist software engineers, which makes the position look less like a long-term compounder and more like a short-term cash harvest.";
     for (const word of reasoning.split(" ")) {
       await new Promise((r) => setTimeout(r, 55));
       onProgress({ type: "analysis_token", text: word + " " });
