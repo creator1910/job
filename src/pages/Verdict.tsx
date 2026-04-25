@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Verdict as VerdictData, TavilySource } from "@/lib/analyze";
 import { useTheme, type Colors } from "@/lib/theme";
@@ -33,6 +33,8 @@ function Divider({ colors }: { colors: Colors }) {
   return <div style={{ height: "1px", backgroundColor: colors.borderMuted, margin: "0" }} />;
 }
 
+const SCRAMBLE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$#!";
+
 export default function Verdict() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -45,8 +47,107 @@ export default function Verdict() {
     | { employer: string; role: string; error: string; sources?: TavilySource[]; researchText?: string; verdict?: never }
     | null;
 
+  // Animation state
+  const prefersReduced = useRef(
+    typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  ).current;
+
+  const [displayVerdict, setDisplayVerdict] = useState<string>("");
+  const [convictionCount, setConvictionCount] = useState(0);
+  const [barFill, setBarFill] = useState(0);
+  const [heroVisible, setHeroVisible] = useState(false);
+  const [summaryVisible, setSummaryVisible] = useState(false);
+  const [convictionVisible, setConvictionVisible] = useState(false);
+  const [signalsVisible, setSignalsVisible] = useState(false);
+  const [lowerVisible, setLowerVisible] = useState(false);
+
   useEffect(() => {
     if (!state) navigate("/");
+  }, []);
+
+  useEffect(() => {
+    if (!state?.verdict) return;
+    const target = state.verdict.verdict;
+    const conviction = state.verdict.conviction;
+
+    if (prefersReduced) {
+      setDisplayVerdict(target);
+      setConvictionCount(conviction);
+      setBarFill(conviction);
+      setHeroVisible(true);
+      setSummaryVisible(true);
+      setConvictionVisible(true);
+      setSignalsVisible(true);
+      setLowerVisible(true);
+      return;
+    }
+
+    // ── Verdict word scramble (0–700ms) ──────────────────────────────────────
+    setDisplayVerdict(target.replace(/\S/g, () =>
+      SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)]
+    ));
+
+    const INTERVAL = 38;
+    const DURATION = 680;
+    const totalFrames = Math.ceil(DURATION / INTERVAL);
+    let frame = 0;
+
+    const scrambleId = setInterval(() => {
+      frame++;
+      const progress = frame / totalFrames;
+      if (frame >= totalFrames) {
+        clearInterval(scrambleId);
+        setDisplayVerdict(target);
+      } else {
+        setDisplayVerdict(
+          target.split("").map((char, i) => {
+            // Each character resolves left-to-right with slight overlap
+            const threshold = (i / target.length) * 0.55 + 0.45;
+            if (progress >= threshold) return char;
+            return SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
+          }).join("")
+        );
+      }
+    }, INTERVAL);
+
+    // ── Ticker + badge (fade in immediately) ─────────────────────────────────
+    const t1 = setTimeout(() => setHeroVisible(true), 80);
+
+    // ── Summary text ─────────────────────────────────────────────────────────
+    const t2 = setTimeout(() => setSummaryVisible(true), 550);
+
+    // ── Conviction bar + count-up ─────────────────────────────────────────────
+    const t3 = setTimeout(() => {
+      setConvictionVisible(true);
+      setBarFill(conviction);
+
+      const countDuration = 900;
+      const countStart = performance.now();
+      const tick = (now: number) => {
+        const elapsed = now - countStart;
+        const t = Math.min(elapsed / countDuration, 1);
+        const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+        setConvictionCount(Math.round(eased * conviction));
+        if (t < 1) requestAnimationFrame(tick);
+        else setConvictionCount(conviction);
+      };
+      requestAnimationFrame(tick);
+    }, 720);
+
+    // ── Signals stagger ───────────────────────────────────────────────────────
+    const t4 = setTimeout(() => setSignalsVisible(true), 950);
+
+    // ── Accordions + footer ───────────────────────────────────────────────────
+    const t5 = setTimeout(() => setLowerVisible(true), 1350);
+
+    return () => {
+      clearInterval(scrambleId);
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t4);
+      clearTimeout(t5);
+    };
   }, []);
 
   if (!state) return null;
@@ -87,7 +188,11 @@ export default function Verdict() {
 
         {/* ── Hero ── */}
         <div style={{ padding: "28px 0 20px", textAlign: "center" }}>
-          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "14px", marginBottom: "12px" }}>
+          <div style={{
+            display: "flex", justifyContent: "center", alignItems: "center", gap: "14px", marginBottom: "12px",
+            opacity: heroVisible ? 1 : 0,
+            transition: "opacity 0.4s ease-out",
+          }}>
             <span style={{ fontSize: "10px", color: colors.textMuted, letterSpacing: "0.2em" }}>{ticker}</span>
             <span style={{ color: colors.border }}>|</span>
             <span style={{ fontSize: "9px", color: confColor, letterSpacing: "0.15em", display: "flex", alignItems: "center", gap: "5px" }}>
@@ -97,6 +202,7 @@ export default function Verdict() {
             </span>
           </div>
 
+          {/* Verdict word — scramble renders here */}
           <div style={{
             fontSize: "clamp(52px, 11vw, 88px)",
             fontWeight: 900,
@@ -105,11 +211,20 @@ export default function Verdict() {
             lineHeight: 1,
             marginBottom: "10px",
             textShadow: `0 0 60px ${verdictColor}1a`,
+            fontVariantNumeric: "tabular-nums",
+            minWidth: `${verdict.verdict.length}ch`,
           }}>
-            {verdict.verdict}
+            {displayVerdict || verdict.verdict}
           </div>
 
-          <div style={{ fontSize: "12px", color: colors.textSecondary, fontStyle: "italic" }}>
+          <div style={{
+            fontSize: "12px",
+            color: colors.textSecondary,
+            fontStyle: "italic",
+            opacity: summaryVisible ? 1 : 0,
+            transform: summaryVisible ? "translateY(0)" : "translateY(4px)",
+            transition: "opacity 0.35s ease-out, transform 0.35s ease-out",
+          }}>
             {verdict.summary}
           </div>
         </div>
@@ -117,15 +232,25 @@ export default function Verdict() {
         <Divider colors={colors} />
 
         {/* ── Conviction ── */}
-        <div style={{ padding: "14px 0" }}>
+        <div style={{
+          padding: "14px 0",
+          opacity: convictionVisible ? 1 : 0,
+          transform: convictionVisible ? "translateY(0)" : "translateY(6px)",
+          transition: "opacity 0.4s ease-out, transform 0.4s ease-out",
+        }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
             <span style={{ fontSize: "9px", color: colors.textDim, letterSpacing: "0.2em" }}>CONVICTION</span>
-            <span style={{ fontSize: "16px", fontWeight: 700, color: verdictColor, letterSpacing: "-0.02em" }}>
-              {verdict.conviction}<span style={{ fontSize: "10px", fontWeight: 400, color: colors.textMuted }}>%</span>
+            <span style={{ fontSize: "16px", fontWeight: 700, color: verdictColor, letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>
+              {convictionCount}<span style={{ fontSize: "10px", fontWeight: 400, color: colors.textMuted }}>%</span>
             </span>
           </div>
           <div style={{ width: "100%", height: "2px", backgroundColor: colors.bgElevated }}>
-            <div style={{ width: `${verdict.conviction}%`, height: "100%", backgroundColor: verdictColor, transition: "width 1s ease-out" }} />
+            <div style={{
+              width: `${barFill}%`,
+              height: "100%",
+              backgroundColor: verdictColor,
+              transition: "width 1s cubic-bezier(0.16, 1, 0.3, 1)",
+            }} />
           </div>
         </div>
 
@@ -133,10 +258,24 @@ export default function Verdict() {
 
         {/* ── Signals ── */}
         <div style={{ padding: "14px 0", flex: "0 0 auto" }}>
-          <div style={{ fontSize: "9px", color: colors.textDim, letterSpacing: "0.2em", marginBottom: "10px" }}>SIGNALS</div>
+          <div style={{
+            fontSize: "9px", color: colors.textDim, letterSpacing: "0.2em", marginBottom: "10px",
+            opacity: signalsVisible ? 1 : 0,
+            transition: "opacity 0.3s ease-out",
+          }}>
+            SIGNALS
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {signals.map((signal, i) => (
-              <div key={i} style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+              <div
+                key={i}
+                style={{
+                  display: "flex", gap: "10px", alignItems: "flex-start",
+                  opacity: signalsVisible ? 1 : 0,
+                  transform: signalsVisible ? "translateY(0)" : "translateY(8px)",
+                  transition: `opacity 0.35s ease-out ${i * 110}ms, transform 0.35s ease-out ${i * 110}ms`,
+                }}
+              >
                 <div style={{
                   width: "22px",
                   height: "22px",
@@ -172,7 +311,11 @@ export default function Verdict() {
 
         {/* ── Analyst notes (expandable) ── */}
         {researchText && (
-          <>
+          <div style={{
+            opacity: lowerVisible ? 1 : 0,
+            transform: lowerVisible ? "translateY(0)" : "translateY(6px)",
+            transition: "opacity 0.35s ease-out, transform 0.35s ease-out",
+          }}>
             <button
               onClick={() => setNotesOpen((o) => !o)}
               style={{
@@ -228,12 +371,16 @@ export default function Verdict() {
               </div>
             )}
             <Divider colors={colors} />
-          </>
+          </div>
         )}
 
         {/* ── Sources (expandable) ── */}
         {sources.length > 0 && (
-          <>
+          <div style={{
+            opacity: lowerVisible ? 1 : 0,
+            transform: lowerVisible ? "translateY(0)" : "translateY(6px)",
+            transition: "opacity 0.35s ease-out 60ms, transform 0.35s ease-out 60ms",
+          }}>
             <button
               onClick={() => setSourcesOpen((o) => !o)}
               style={{
@@ -278,11 +425,15 @@ export default function Verdict() {
               </div>
             )}
             <Divider colors={colors} />
-          </>
+          </div>
         )}
 
         {/* ── Footer ── */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 0" }}>
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 0",
+          opacity: lowerVisible ? 1 : 0,
+          transition: "opacity 0.35s ease-out 120ms",
+        }}>
           <button
             onClick={() => navigate("/")}
             style={{
