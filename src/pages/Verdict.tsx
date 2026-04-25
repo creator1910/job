@@ -193,9 +193,9 @@ export default function Verdict() {
             opacity: heroVisible ? 1 : 0,
             transition: "opacity 0.4s ease-out",
           }}>
-            <span style={{ fontSize: "10px", color: colors.textMuted, letterSpacing: "0.2em" }}>{ticker}</span>
+            <span style={{ fontSize: "13px", color: colors.textMuted, letterSpacing: "0.2em" }}>{ticker}</span>
             <span style={{ color: colors.border }}>|</span>
-            <span style={{ fontSize: "9px", color: confColor, letterSpacing: "0.15em", display: "flex", alignItems: "center", gap: "5px" }}>
+            <span style={{ fontSize: "12px", color: confColor, letterSpacing: "0.15em", display: "flex", alignItems: "center", gap: "5px" }}>
               <span style={{ opacity: 0.6 }}>◉</span>
               {confidence.label}
               {sources.length > 0 && <span style={{ color: colors.textDim }}>· {sources.length}</span>}
@@ -218,7 +218,7 @@ export default function Verdict() {
           </div>
 
           <div style={{
-            fontSize: "12px",
+            fontSize: "15px",
             color: colors.textSecondary,
             fontStyle: "italic",
             opacity: summaryVisible ? 1 : 0,
@@ -239,9 +239,9 @@ export default function Verdict() {
           transition: "opacity 0.4s ease-out, transform 0.4s ease-out",
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-            <span style={{ fontSize: "9px", color: colors.textDim, letterSpacing: "0.2em" }}>CONVICTION</span>
-            <span style={{ fontSize: "16px", fontWeight: 700, color: verdictColor, letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>
-              {convictionCount}<span style={{ fontSize: "10px", fontWeight: 400, color: colors.textMuted }}>%</span>
+            <span style={{ fontSize: "12px", color: colors.textDim, letterSpacing: "0.2em" }}>CONVICTION</span>
+            <span style={{ fontSize: "20px", fontWeight: 700, color: verdictColor, letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>
+              {convictionCount}<span style={{ fontSize: "13px", fontWeight: 400, color: colors.textMuted }}>%</span>
             </span>
           </div>
           <div style={{ width: "100%", height: "2px", backgroundColor: colors.bgElevated }}>
@@ -259,7 +259,7 @@ export default function Verdict() {
         {/* ── Signals ── */}
         <div style={{ padding: "14px 0", flex: "0 0 auto" }}>
           <div style={{
-            fontSize: "9px", color: colors.textDim, letterSpacing: "0.2em", marginBottom: "10px",
+            fontSize: "12px", color: colors.textDim, letterSpacing: "0.2em", marginBottom: "10px",
             opacity: signalsVisible ? 1 : 0,
             transition: "opacity 0.3s ease-out",
           }}>
@@ -284,17 +284,17 @@ export default function Verdict() {
                   justifyContent: "center",
                   backgroundColor: signal.direction === "up" ? `${colors.verdictColors.BUY}18` : `${colors.verdictColors.SHORT}18`,
                   border: `1px solid ${signal.direction === "up" ? colors.verdictColors.BUY : colors.verdictColors.SHORT}30`,
-                  fontSize: "11px",
+                  fontSize: "14px",
                   color: signal.direction === "up" ? colors.verdictColors.BUY : colors.verdictColors.SHORT,
                   flexShrink: 0,
                 }}>
                   {signal.direction === "up" ? "↑" : "↓"}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <span style={{ fontSize: "11px", color: colors.textSecondary, lineHeight: 1.5 }}>{signal.text}</span>
+                  <span style={{ fontSize: "14px", color: colors.textSecondary, lineHeight: 1.5 }}>{signal.text}</span>
                   {signal.url && (
                     <a href={signal.url} target="_blank" rel="noopener noreferrer"
-                      style={{ display: "block", marginTop: "2px", fontSize: "9px", color: colors.textDim, textDecoration: "none", letterSpacing: "0.08em" }}
+                      style={{ display: "block", marginTop: "2px", fontSize: "11px", color: colors.textDim, textDecoration: "none", letterSpacing: "0.08em" }}
                       onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = colors.textMuted; }}
                       onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = colors.textDim; }}
                     >
@@ -332,8 +332,8 @@ export default function Verdict() {
                 textAlign: "left",
               }}
             >
-              <span style={{ fontSize: "9px", letterSpacing: "0.2em" }}>ANALYST NOTES</span>
-              <span style={{ fontSize: "10px", color: colors.textDim, transition: "transform 0.2s", display: "inline-block", transform: notesOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▾</span>
+              <span style={{ fontSize: "12px", letterSpacing: "0.2em" }}>ANALYST NOTES</span>
+              <span style={{ fontSize: "12px", color: colors.textDim, transition: "transform 0.2s", display: "inline-block", transform: notesOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▾</span>
             </button>
             {notesOpen && (
               <div style={{
@@ -341,7 +341,7 @@ export default function Verdict() {
                 border: `1px solid ${colors.border}`,
                 padding: "16px 18px",
                 marginBottom: "2px",
-                fontSize: "11px",
+                fontSize: "13px",
                 color: colors.textMuted,
                 lineHeight: 1.8,
                 letterSpacing: "0.02em",
@@ -397,8 +397,8 @@ export default function Verdict() {
                 textAlign: "left",
               }}
             >
-              <span style={{ fontSize: "9px", letterSpacing: "0.2em" }}>SOURCES · {sources.length}</span>
-              <span style={{ fontSize: "10px", color: colors.textDim, transition: "transform 0.2s", display: "inline-block", transform: sourcesOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▾</span>
+              <span style={{ fontSize: "12px", letterSpacing: "0.2em" }}>SOURCES · {sources.length}</span>
+              <span style={{ fontSize: "12px", color: colors.textDim, transition: "transform 0.2s", display: "inline-block", transform: sourcesOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▾</span>
             </button>
             {sourcesOpen && (
               <div style={{ maxHeight: "180px", overflowY: "auto", marginBottom: "2px" }}>
@@ -417,9 +417,9 @@ export default function Verdict() {
                     onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = "0.5"; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = "1"; }}
                   >
-                    <span style={{ fontSize: "9px", color: colors.textDim, textAlign: "right" }}>{String(i + 1).padStart(2, "0")}</span>
-                    <span style={{ fontSize: "10px", color: colors.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{src.title}</span>
-                    <span style={{ fontSize: "9px", color: colors.textDim, flexShrink: 0 }}>{hostname(src.url)} ↗</span>
+                    <span style={{ fontSize: "12px", color: colors.textDim, textAlign: "right" }}>{String(i + 1).padStart(2, "0")}</span>
+                    <span style={{ fontSize: "13px", color: colors.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{src.title}</span>
+                    <span style={{ fontSize: "11px", color: colors.textDim, flexShrink: 0 }}>{hostname(src.url)} ↗</span>
                   </a>
                 ))}
               </div>
@@ -442,7 +442,7 @@ export default function Verdict() {
               border: `1px solid ${colors.border}`,
               color: colors.textMuted,
               fontFamily: "inherit",
-              fontSize: "10px",
+              fontSize: "13px",
               letterSpacing: "0.2em",
               cursor: "pointer",
               transition: "all 0.15s",
@@ -452,7 +452,7 @@ export default function Verdict() {
           >
             ↩ NEW POSITION
           </button>
-          <span style={{ fontSize: "9px", color: colors.textFaint, letterSpacing: "0.05em" }}>
+          <span style={{ fontSize: "11px", color: colors.textFaint, letterSpacing: "0.05em" }}>
             Not financial or career advice.
           </span>
         </div>
@@ -476,9 +476,9 @@ function ErrorScreen({ message, onReset, colors }: { message: string; onReset: (
       gap: "24px",
       padding: "40px",
     }}>
-      <div style={{ color: colors.accent, fontSize: "11px", letterSpacing: "0.25em" }}>SIGNAL ERROR</div>
-      <div style={{ color: colors.textMuted, fontSize: "12px", textAlign: "center", maxWidth: "400px", lineHeight: 1.7 }}>{message}</div>
-      <button onClick={onReset} style={{ padding: "12px 24px", background: "transparent", border: `1px solid ${colors.border}`, color: colors.textMuted, fontFamily: "inherit", fontSize: "10px", letterSpacing: "0.2em", cursor: "pointer" }}>
+      <div style={{ color: colors.accent, fontSize: "14px", letterSpacing: "0.25em" }}>SIGNAL ERROR</div>
+      <div style={{ color: colors.textMuted, fontSize: "15px", textAlign: "center", maxWidth: "400px", lineHeight: 1.7 }}>{message}</div>
+      <button onClick={onReset} style={{ padding: "12px 24px", background: "transparent", border: `1px solid ${colors.border}`, color: colors.textMuted, fontFamily: "inherit", fontSize: "13px", letterSpacing: "0.2em", cursor: "pointer" }}>
         ↩ TRY AGAIN
       </button>
     </div>

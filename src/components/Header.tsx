@@ -13,14 +13,14 @@ export function Header() {
       flexShrink: 0,
       borderBottom: `1px solid ${colors.border}`,
     }}>
-      <div style={{ fontSize: "24px", fontWeight: 700, letterSpacing: "0.05em", color: colors.text, flexShrink: 0 }}>
+      <div style={{ fontSize: "26px", fontWeight: 700, letterSpacing: "0.05em", color: colors.text, flexShrink: 0 }}>
         <span style={{ color: colors.accent }}>$</span>JOB
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: "20px", minWidth: 0 }}>
         <div style={{
-          fontSize: "11px",
+          fontSize: "13px",
           color: colors.textMuted,
-          letterSpacing: "0.15em",
+          letterSpacing: "0.12em",
           whiteSpace: "nowrap",
           overflow: "hidden",
           textOverflow: "ellipsis",
@@ -37,8 +37,8 @@ export function Header() {
             border: `1px solid ${colors.border}`,
             color: colors.textMuted,
             fontFamily: "inherit",
-            fontSize: "10px",
-            letterSpacing: "0.15em",
+            fontSize: "12px",
+            letterSpacing: "0.12em",
             padding: "0 10px",
             cursor: "pointer",
             transition: "all 0.15s",

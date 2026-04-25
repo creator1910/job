@@ -23,9 +23,9 @@ export default function Home() {
     border: "none",
     borderBottom: `1px solid ${colors.border}`,
     color: colors.text,
-    fontSize: "20px",
+    fontSize: "22px",
     fontFamily: "inherit",
-    padding: "8px 0",
+    padding: "10px 0",
     outline: "none",
     letterSpacing: "0.02em",
   };
@@ -49,25 +49,25 @@ export default function Home() {
         alignItems: "center",
         padding: "40px 24px 60px",
       }}>
-        <div style={{ width: "100%", maxWidth: "480px" }}>
+        <div style={{ width: "100%", maxWidth: "520px" }}>
           <p style={{
-            fontSize: "11px",
+            fontSize: "14px",
             color: colors.textMuted,
-            letterSpacing: "0.2em",
-            marginBottom: "32px",
+            letterSpacing: "0.18em",
+            marginBottom: "40px",
             textAlign: "center",
           }}>
             YOUR CAREER IS AN ASSET. ACT ACCORDINGLY.
           </p>
 
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
             <div>
               <label style={{
                 display: "block",
-                fontSize: "10px",
+                fontSize: "13px",
                 color: colors.textMuted,
-                letterSpacing: "0.2em",
-                marginBottom: "8px",
+                letterSpacing: "0.18em",
+                marginBottom: "10px",
               }}>
                 EMPLOYER
               </label>
@@ -84,10 +84,10 @@ export default function Home() {
             <div>
               <label style={{
                 display: "block",
-                fontSize: "10px",
+                fontSize: "13px",
                 color: colors.textMuted,
-                letterSpacing: "0.2em",
-                marginBottom: "8px",
+                letterSpacing: "0.18em",
+                marginBottom: "10px",
               }}>
                 ROLE
               </label>
@@ -105,13 +105,13 @@ export default function Home() {
               disabled={!ready}
               style={{
                 marginTop: "8px",
-                padding: "14px 24px",
+                padding: "16px 24px",
                 background: "transparent",
                 border: `1px solid ${ready ? colors.accent : colors.border}`,
                 color: ready ? colors.accent : colors.textMuted,
                 fontFamily: "inherit",
-                fontSize: "13px",
-                letterSpacing: "0.2em",
+                fontSize: "15px",
+                letterSpacing: "0.18em",
                 cursor: ready ? "pointer" : "not-allowed",
                 transition: "all 0.15s",
               }}
@@ -137,9 +137,9 @@ export default function Home() {
         borderTop: `1px solid ${colors.borderMuted}`,
         display: "flex",
         justifyContent: "space-between",
-        fontSize: "10px",
+        fontSize: "12px",
         color: colors.textFaint,
-        letterSpacing: "0.15em",
+        letterSpacing: "0.12em",
       }}>
         <span>NYSE · NASDAQ · CAREER EXCHANGE</span>
         <span>AI-POWERED · NOT FINANCIAL ADVICE</span>

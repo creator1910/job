@@ -91,8 +91,8 @@ export default function Loading() {
           <Spinner accentColor={colors.accent} bgColor={colors.bgElevated} />
           {state && (
             <div>
-              <div style={{ fontSize: "10px", color: colors.textMuted, letterSpacing: "0.2em" }}>ANALYZING</div>
-              <div style={{ fontSize: "15px", color: colors.textSecondary, marginTop: "4px", letterSpacing: "0.04em" }}>
+              <div style={{ fontSize: "13px", color: colors.textMuted, letterSpacing: "0.2em" }}>ANALYZING</div>
+              <div style={{ fontSize: "19px", color: colors.textSecondary, marginTop: "4px", letterSpacing: "0.04em" }}>
                 {state.employer} / {state.role}
               </div>
             </div>
@@ -102,7 +102,7 @@ export default function Loading() {
         {/* Search results feed */}
         <div>
           <div style={{
-            fontSize: "10px",
+            fontSize: "13px",
             color: phase === "searching" ? colors.accent : colors.textMuted,
             letterSpacing: "0.2em",
             marginBottom: "12px",
@@ -122,7 +122,7 @@ export default function Loading() {
 
           <div style={{ display: "flex", flexDirection: "column", gap: "6px", minHeight: "120px" }}>
             {sources.length === 0 && phase === "searching" && (
-              <div style={{ fontSize: "11px", color: colors.textDim, letterSpacing: "0.05em", animation: "blink 1.2s ease-in-out infinite" }}>
+              <div style={{ fontSize: "14px", color: colors.textDim, letterSpacing: "0.05em", animation: "blink 1.2s ease-in-out infinite" }}>
                 scanning...
               </div>
             )}
@@ -136,7 +136,7 @@ export default function Loading() {
         {(phase === "analyzing" || analysisText) && (
           <div>
             <div style={{
-              fontSize: "10px",
+              fontSize: "13px",
               color: colors.accent,
               letterSpacing: "0.2em",
               marginBottom: "12px",
@@ -148,7 +148,7 @@ export default function Loading() {
               SYNTHESIZING VERDICT
             </div>
             <div style={{
-              fontSize: "12px",
+              fontSize: "15px",
               color: colors.textSecondary,
               lineHeight: 1.7,
               letterSpacing: "0.03em",
@@ -182,13 +182,13 @@ function SourceRow({ source, index, colors }: { source: TavilySource; index: num
       animation: "fadeSlideIn 0.25s ease-out both",
       animationDelay: `${index * 40}ms`,
     }}>
-      <span style={{ fontSize: "9px", color: colors.textDim, flexShrink: 0, letterSpacing: "0.1em" }}>
+      <span style={{ fontSize: "12px", color: colors.textDim, flexShrink: 0, letterSpacing: "0.1em" }}>
         {String(index + 1).padStart(2, "0")}
       </span>
-      <span style={{ fontSize: "11px", color: colors.textSecondary, letterSpacing: "0.02em", lineHeight: 1.4 }}>
+      <span style={{ fontSize: "14px", color: colors.textSecondary, letterSpacing: "0.02em", lineHeight: 1.4 }}>
         {source.title}
       </span>
-      <span style={{ fontSize: "9px", color: colors.textDim, letterSpacing: "0.05em", flexShrink: 0, marginLeft: "auto" }}>
+      <span style={{ fontSize: "12px", color: colors.textDim, letterSpacing: "0.05em", flexShrink: 0, marginLeft: "auto" }}>
         {(() => { try { return new URL(source.url).hostname.replace("www.", ""); } catch { return ""; } })()}
       </span>
     </div>
