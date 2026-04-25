@@ -34,15 +34,15 @@ const DARK: Colors = {
 
 const LIGHT: Colors = {
   bg: "#f5f5f0",
-  bgSurface: "#ebebе6",
+  bgSurface: "#ebebe6",
   bgElevated: "#e2e2dd",
   border: "#d4d4cf",
   borderMuted: "#e0e0db",
   text: "#111111",
   textSecondary: "#555",
-  textMuted: "#888",
-  textDim: "#bbb",
-  textFaint: "#d8d8d3",
+  textMuted: "#777",
+  textDim: "#999",
+  textFaint: "#c8c8c3",
   accent: "#cc0000",
   verdictColors: { BUY: "#007a3d", HOLD: "#7a7000", SELL: "#cc5500", SHORT: "#cc0000" },
 };
