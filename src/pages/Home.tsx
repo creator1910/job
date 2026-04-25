@@ -47,20 +47,20 @@ export default function Home() {
         flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
-        padding: "60px 40px",
+        padding: "40px 24px 60px",
       }}>
         <div style={{ width: "100%", maxWidth: "480px" }}>
           <p style={{
             fontSize: "11px",
             color: colors.textMuted,
             letterSpacing: "0.2em",
-            marginBottom: "48px",
+            marginBottom: "32px",
             textAlign: "center",
           }}>
             YOUR CAREER IS AN ASSET. ACT ACCORDINGLY.
           </p>
 
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "32px" }}>
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
             <div>
               <label style={{
                 display: "block",
@@ -104,7 +104,7 @@ export default function Home() {
               type="submit"
               disabled={!ready}
               style={{
-                marginTop: "16px",
+                marginTop: "8px",
                 padding: "14px 24px",
                 background: "transparent",
                 border: `1px solid ${ready ? colors.accent : colors.border}`,
