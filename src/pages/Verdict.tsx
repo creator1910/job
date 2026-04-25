@@ -52,7 +52,7 @@ export default function Verdict() {
         minHeight: "100vh",
         backgroundColor: "#0a0a0a",
         color: "#e8e8e8",
-        fontFamily: "'Geist Mono', 'Courier New', monospace",
+        fontFamily: "'Space Mono', 'Courier New', monospace",
         display: "flex",
         flexDirection: "column",
       }}
@@ -239,7 +239,7 @@ function ErrorScreen({ message, onReset }: { message: string; onReset: () => voi
         minHeight: "100vh",
         backgroundColor: "#0a0a0a",
         color: "#e8e8e8",
-        fontFamily: "'Geist Mono', 'Courier New', monospace",
+        fontFamily: "'Space Mono', 'Courier New', monospace",
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",

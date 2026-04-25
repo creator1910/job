@@ -18,7 +18,7 @@ export default function Home() {
         minHeight: "100vh",
         backgroundColor: "#0a0a0a",
         color: "#e8e8e8",
-        fontFamily: "'Geist Mono', 'Courier New', monospace",
+        fontFamily: "'Space Mono', 'Courier New', monospace",
         display: "flex",
         flexDirection: "column",
       }}
