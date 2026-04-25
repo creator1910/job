@@ -1,270 +1,333 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
-import type { Verdict as VerdictData } from "@/lib/analyze";
-
-const VERDICT_COLORS = {
-  BUY: "#00cc66",
-  HOLD: "#cccc00",
-  SELL: "#ff8800",
-  SHORT: "#ff2222",
-};
+import { useEffect, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import type { Verdict as VerdictData, TavilySource } from "@/lib/analyze";
+import { useTheme, type Colors } from "@/lib/theme";
+import { Header } from "@/components/Header";
 
 function buildTicker(employer: string, role: string): string {
   const emp = employer.trim().split(/\s+/)[0].toUpperCase();
-  const roleAbbr = role
-    .trim()
-    .split(/\s+/)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 4);
+  const roleAbbr = role.trim().split(/\s+/).map((w) => w[0]).join("").toUpperCase().slice(0, 4);
   return `$${emp}-${roleAbbr}`;
+}
+
+function getConfidence(count: number): { label: string; tier: "high" | "moderate" | "limited" | "none" } {
+  if (count >= 8) return { label: "HIGH CONFIDENCE", tier: "high" };
+  if (count >= 4) return { label: "MODERATE", tier: "moderate" };
+  if (count >= 1) return { label: "LIMITED DATA", tier: "limited" };
+  return { label: "NO DATA", tier: "none" };
+}
+
+function confidenceColor(tier: string, colors: Colors): string {
+  if (tier === "high") return colors.verdictColors.BUY;
+  if (tier === "moderate") return colors.verdictColors.HOLD;
+  if (tier === "limited") return colors.verdictColors.SELL;
+  return colors.textMuted;
+}
+
+function hostname(url: string): string {
+  try { return new URL(url).hostname.replace("www.", ""); } catch { return url; }
+}
+
+function Divider({ colors }: { colors: Colors }) {
+  return <div style={{ height: "1px", backgroundColor: colors.borderMuted, margin: "0" }} />;
 }
 
 export default function Verdict() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { colors } = useTheme();
+  const [sourcesOpen, setSourcesOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
+
   const state = location.state as
-    | { employer: string; role: string; verdict: VerdictData; error?: never }
-    | { employer: string; role: string; error: string; verdict?: never }
+    | { employer: string; role: string; verdict: VerdictData; sources: TavilySource[]; researchText: string; error?: never }
+    | { employer: string; role: string; error: string; sources?: TavilySource[]; researchText?: string; verdict?: never }
     | null;
 
-  // D2: null guard — redirect to home if no state
   useEffect(() => {
     if (!state) navigate("/");
   }, []);
 
   if (!state) return null;
 
-  if (state.error) {
-    return (
-      <ErrorScreen message={state.error} onReset={() => navigate("/")} />
-    );
+  if (!state.verdict) {
+    return <ErrorScreen message={state.error || "Analysis failed. Please try again."} onReset={() => navigate("/")} colors={colors} />;
   }
 
-  const { employer, role, verdict } = state;
+  const { employer, role, verdict, sources = [], researchText = "" } = state;
   const ticker = buildTicker(employer, role);
-  const color = VERDICT_COLORS[verdict.verdict];
+  const verdictColor = colors.verdictColors[verdict.verdict];
+  const confidence = getConfidence(sources.length);
+  const confColor = confidenceColor(confidence.tier, colors);
+  const signals = verdict.signals ?? [];
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        backgroundColor: "#0a0a0a",
-        color: "#e8e8e8",
-        fontFamily: "'Space Mono', 'Courier New', monospace",
+    <div style={{
+      height: "100vh",
+      overflow: "hidden",
+      backgroundColor: colors.bg,
+      color: colors.text,
+      fontFamily: "'Space Mono', 'Courier New', monospace",
+      display: "flex",
+      flexDirection: "column",
+    }}>
+      <Header />
+
+      <main style={{
+        flex: 1,
+        overflow: "hidden",
         display: "flex",
         flexDirection: "column",
-      }}
-    >
-      {/* Header */}
-      <header
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "20px 40px",
-          borderBottom: "1px solid #1e1e1e",
-        }}
-      >
-        <div style={{ fontSize: "24px", fontWeight: 700, letterSpacing: "0.05em" }}>
-          <span style={{ color: "#ff2222" }}>$</span>JOB
-        </div>
-        <div style={{ fontSize: "11px", color: "#666", letterSpacing: "0.15em" }}>
-          MARKET OPEN · CAREER SIGNALS LIVE
-        </div>
-      </header>
+        maxWidth: "680px",
+        margin: "0 auto",
+        width: "100%",
+        padding: "0 40px",
+      }}>
 
-      {/* Main verdict */}
-      <main
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          padding: "40px",
-          maxWidth: "720px",
-          margin: "0 auto",
-          width: "100%",
-        }}
-      >
-        {/* Ticker */}
-        <div
-          style={{
-            fontSize: "13px",
-            color: "#555",
-            letterSpacing: "0.25em",
-            marginBottom: "16px",
-          }}
-        >
-          {ticker}
-        </div>
+        {/* ── Hero ── */}
+        <div style={{ padding: "28px 0 20px", textAlign: "center" }}>
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "14px", marginBottom: "12px" }}>
+            <span style={{ fontSize: "10px", color: colors.textMuted, letterSpacing: "0.2em" }}>{ticker}</span>
+            <span style={{ color: colors.border }}>|</span>
+            <span style={{ fontSize: "9px", color: confColor, letterSpacing: "0.15em", display: "flex", alignItems: "center", gap: "5px" }}>
+              <span style={{ opacity: 0.6 }}>◉</span>
+              {confidence.label}
+              {sources.length > 0 && <span style={{ color: colors.textDim }}>· {sources.length}</span>}
+            </span>
+          </div>
 
-        {/* Verdict word */}
-        <div
-          style={{
-            fontSize: "clamp(48px, 12vw, 96px)",
+          <div style={{
+            fontSize: "clamp(52px, 11vw, 88px)",
             fontWeight: 900,
-            color,
-            letterSpacing: "-0.02em",
+            color: verdictColor,
+            letterSpacing: "-0.03em",
             lineHeight: 1,
-            marginBottom: "8px",
-          }}
-        >
-          {verdict.verdict}
-        </div>
-
-        {/* Summary */}
-        <div
-          style={{
-            fontSize: "14px",
-            color: "#888",
-            marginBottom: "40px",
-            textAlign: "center",
-            fontStyle: "italic",
-          }}
-        >
-          {verdict.summary}
-        </div>
-
-        {/* Conviction */}
-        <div style={{ width: "100%", marginBottom: "40px" }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              fontSize: "10px",
-              color: "#444",
-              letterSpacing: "0.2em",
-              marginBottom: "8px",
-            }}
-          >
-            <span>CONVICTION</span>
-            <span style={{ color }}>{verdict.conviction}%</span>
+            marginBottom: "10px",
+            textShadow: `0 0 60px ${verdictColor}1a`,
+          }}>
+            {verdict.verdict}
           </div>
-          <div style={{ width: "100%", height: "3px", backgroundColor: "#1a1a1a" }}>
-            <div
-              style={{
-                width: `${verdict.conviction}%`,
-                height: "100%",
-                backgroundColor: color,
-                transition: "width 0.8s ease-out",
-              }}
-            />
+
+          <div style={{ fontSize: "12px", color: colors.textSecondary, fontStyle: "italic" }}>
+            {verdict.summary}
           </div>
         </div>
 
-        {/* Signals */}
-        <div style={{ width: "100%", marginBottom: "48px" }}>
-          <div
-            style={{
-              fontSize: "10px",
-              color: "#444",
-              letterSpacing: "0.2em",
-              marginBottom: "16px",
-            }}
-          >
-            SIGNAL BREAKDOWN
+        <Divider colors={colors} />
+
+        {/* ── Conviction ── */}
+        <div style={{ padding: "14px 0" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+            <span style={{ fontSize: "9px", color: colors.textDim, letterSpacing: "0.2em" }}>CONVICTION</span>
+            <span style={{ fontSize: "16px", fontWeight: 700, color: verdictColor, letterSpacing: "-0.02em" }}>
+              {verdict.conviction}<span style={{ fontSize: "10px", fontWeight: 400, color: colors.textMuted }}>%</span>
+            </span>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {verdict.signals.map((signal, i) => (
-              <div
-                key={i}
-                style={{
+          <div style={{ width: "100%", height: "2px", backgroundColor: colors.bgElevated }}>
+            <div style={{ width: `${verdict.conviction}%`, height: "100%", backgroundColor: verdictColor, transition: "width 1s ease-out" }} />
+          </div>
+        </div>
+
+        <Divider colors={colors} />
+
+        {/* ── Signals ── */}
+        <div style={{ padding: "14px 0", flex: "0 0 auto" }}>
+          <div style={{ fontSize: "9px", color: colors.textDim, letterSpacing: "0.2em", marginBottom: "10px" }}>SIGNALS</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {signals.map((signal, i) => (
+              <div key={i} style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                <div style={{
+                  width: "22px",
+                  height: "22px",
                   display: "flex",
-                  gap: "12px",
-                  alignItems: "flex-start",
-                  padding: "12px 0",
-                  borderBottom: "1px solid #141414",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: "16px",
-                    color: signal.direction === "up" ? "#00cc66" : "#ff2222",
-                    flexShrink: 0,
-                    lineHeight: 1.3,
-                  }}
-                >
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: signal.direction === "up" ? `${colors.verdictColors.BUY}18` : `${colors.verdictColors.SHORT}18`,
+                  border: `1px solid ${signal.direction === "up" ? colors.verdictColors.BUY : colors.verdictColors.SHORT}30`,
+                  fontSize: "11px",
+                  color: signal.direction === "up" ? colors.verdictColors.BUY : colors.verdictColors.SHORT,
+                  flexShrink: 0,
+                }}>
                   {signal.direction === "up" ? "↑" : "↓"}
-                </span>
-                <span style={{ fontSize: "13px", color: "#aaa", lineHeight: 1.5 }}>
-                  {signal.text}
-                </span>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: "11px", color: colors.textSecondary, lineHeight: 1.5 }}>{signal.text}</span>
+                  {signal.url && (
+                    <a href={signal.url} target="_blank" rel="noopener noreferrer"
+                      style={{ display: "block", marginTop: "2px", fontSize: "9px", color: colors.textDim, textDecoration: "none", letterSpacing: "0.08em" }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = colors.textMuted; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = colors.textDim; }}
+                    >
+                      ↗ {hostname(signal.url)}
+                    </a>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Footer */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "16px" }}>
+        <Divider colors={colors} />
+
+        {/* ── Analyst notes (expandable) ── */}
+        {researchText && (
+          <>
+            <button
+              onClick={() => setNotesOpen((o) => !o)}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                width: "100%",
+                padding: "12px 0",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "inherit",
+                color: colors.textDim,
+                textAlign: "left",
+              }}
+            >
+              <span style={{ fontSize: "9px", letterSpacing: "0.2em" }}>ANALYST NOTES</span>
+              <span style={{ fontSize: "10px", color: colors.textDim, transition: "transform 0.2s", display: "inline-block", transform: notesOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▾</span>
+            </button>
+            {notesOpen && (
+              <div style={{
+                backgroundColor: colors.bgSurface,
+                border: `1px solid ${colors.border}`,
+                padding: "16px 18px",
+                marginBottom: "2px",
+                fontSize: "11px",
+                color: colors.textMuted,
+                lineHeight: 1.8,
+                letterSpacing: "0.02em",
+                maxHeight: "160px",
+                overflowY: "auto",
+              }}>
+                <ReactMarkdown
+                  components={{
+                    p: ({ children }) => <p style={{ margin: "0 0 8px" }}>{children}</p>,
+                    strong: ({ children }) => <strong style={{ color: colors.textSecondary, fontWeight: 700 }}>{children}</strong>,
+                    em: ({ children }) => <em style={{ fontStyle: "italic" }}>{children}</em>,
+                    ul: ({ children }) => <ul style={{ margin: "6px 0", paddingLeft: "0", listStyle: "none" }}>{children}</ul>,
+                    li: ({ children }) => (
+                      <li style={{ display: "flex", gap: "8px", alignItems: "flex-start", marginBottom: "4px" }}>
+                        <span style={{ color: colors.accent, flexShrink: 0 }}>·</span>
+                        <span>{children}</span>
+                      </li>
+                    ),
+                    a: ({ href, children }) => (
+                      <a href={href} target="_blank" rel="noopener noreferrer"
+                        style={{ color: colors.textDim, textDecoration: "underline" }}>{children}</a>
+                    ),
+                  }}
+                >
+                  {researchText}
+                </ReactMarkdown>
+              </div>
+            )}
+            <Divider colors={colors} />
+          </>
+        )}
+
+        {/* ── Sources (expandable) ── */}
+        {sources.length > 0 && (
+          <>
+            <button
+              onClick={() => setSourcesOpen((o) => !o)}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                width: "100%",
+                padding: "12px 0",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "inherit",
+                color: colors.textDim,
+                textAlign: "left",
+              }}
+            >
+              <span style={{ fontSize: "9px", letterSpacing: "0.2em" }}>SOURCES · {sources.length}</span>
+              <span style={{ fontSize: "10px", color: colors.textDim, transition: "transform 0.2s", display: "inline-block", transform: sourcesOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▾</span>
+            </button>
+            {sourcesOpen && (
+              <div style={{ maxHeight: "180px", overflowY: "auto", marginBottom: "2px" }}>
+                {sources.slice(0, 10).map((src, i) => (
+                  <a key={i} href={src.url} target="_blank" rel="noopener noreferrer"
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "18px 1fr auto",
+                      alignItems: "center",
+                      gap: "10px",
+                      padding: "8px 0",
+                      borderBottom: `1px solid ${colors.borderMuted}`,
+                      textDecoration: "none",
+                      transition: "opacity 0.1s",
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = "0.5"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = "1"; }}
+                  >
+                    <span style={{ fontSize: "9px", color: colors.textDim, textAlign: "right" }}>{String(i + 1).padStart(2, "0")}</span>
+                    <span style={{ fontSize: "10px", color: colors.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{src.title}</span>
+                    <span style={{ fontSize: "9px", color: colors.textDim, flexShrink: 0 }}>{hostname(src.url)} ↗</span>
+                  </a>
+                ))}
+              </div>
+            )}
+            <Divider colors={colors} />
+          </>
+        )}
+
+        {/* ── Footer ── */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 0" }}>
           <button
             onClick={() => navigate("/")}
             style={{
-              padding: "12px 24px",
+              padding: "10px 20px",
               background: "transparent",
-              border: "1px solid #333",
-              color: "#666",
+              border: `1px solid ${colors.border}`,
+              color: colors.textMuted,
               fontFamily: "inherit",
-              fontSize: "11px",
+              fontSize: "10px",
               letterSpacing: "0.2em",
               cursor: "pointer",
               transition: "all 0.15s",
             }}
-            onMouseEnter={(e) => {
-              (e.target as HTMLButtonElement).style.borderColor = "#666";
-              (e.target as HTMLButtonElement).style.color = "#aaa";
-            }}
-            onMouseLeave={(e) => {
-              (e.target as HTMLButtonElement).style.borderColor = "#333";
-              (e.target as HTMLButtonElement).style.color = "#666";
-            }}
+            onMouseEnter={(e) => { const el = e.currentTarget as HTMLButtonElement; el.style.borderColor = colors.textMuted; el.style.color = colors.textSecondary; }}
+            onMouseLeave={(e) => { const el = e.currentTarget as HTMLButtonElement; el.style.borderColor = colors.border; el.style.color = colors.textMuted; }}
           >
             ↩ NEW POSITION
           </button>
-          <p style={{ fontSize: "10px", color: "#2a2a2a", textAlign: "center", maxWidth: "400px" }}>
-            Not financial or career advice. Rotate API keys after demo.
-          </p>
+          <span style={{ fontSize: "9px", color: colors.textFaint, letterSpacing: "0.05em" }}>
+            Not financial or career advice.
+          </span>
         </div>
+
       </main>
     </div>
   );
 }
 
-function ErrorScreen({ message, onReset }: { message: string; onReset: () => void }) {
+function ErrorScreen({ message, onReset, colors }: { message: string; onReset: () => void; colors: Colors }) {
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        backgroundColor: "#0a0a0a",
-        color: "#e8e8e8",
-        fontFamily: "'Space Mono', 'Courier New', monospace",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-        gap: "24px",
-        padding: "40px",
-      }}
-    >
-      <div style={{ color: "#ff2222", fontSize: "13px", letterSpacing: "0.2em" }}>SIGNAL ERROR</div>
-      <div style={{ color: "#555", fontSize: "13px", textAlign: "center", maxWidth: "400px" }}>
-        {message}
-      </div>
-      <button
-        onClick={onReset}
-        style={{
-          padding: "12px 24px",
-          background: "transparent",
-          border: "1px solid #333",
-          color: "#666",
-          fontFamily: "inherit",
-          fontSize: "11px",
-          letterSpacing: "0.2em",
-          cursor: "pointer",
-        }}
-      >
+    <div style={{
+      height: "100vh",
+      backgroundColor: colors.bg,
+      color: colors.text,
+      fontFamily: "'Space Mono', 'Courier New', monospace",
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+      alignItems: "center",
+      gap: "24px",
+      padding: "40px",
+    }}>
+      <div style={{ color: colors.accent, fontSize: "11px", letterSpacing: "0.25em" }}>SIGNAL ERROR</div>
+      <div style={{ color: colors.textMuted, fontSize: "12px", textAlign: "center", maxWidth: "400px", lineHeight: 1.7 }}>{message}</div>
+      <button onClick={onReset} style={{ padding: "12px 24px", background: "transparent", border: `1px solid ${colors.border}`, color: colors.textMuted, fontFamily: "inherit", fontSize: "10px", letterSpacing: "0.2em", cursor: "pointer" }}>
         ↩ TRY AGAIN
       </button>
     </div>

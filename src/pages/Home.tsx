@@ -1,81 +1,74 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTheme } from "@/lib/theme";
+import { Header } from "@/components/Header";
 
 export default function Home() {
   const [employer, setEmployer] = useState("");
   const [role, setRole] = useState("");
   const navigate = useNavigate();
+  const { colors } = useTheme();
+
+  const ready = employer.trim() && role.trim();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!employer.trim() || !role.trim()) return;
+    if (!ready) return;
     navigate("/loading", { state: { employer: employer.trim(), role: role.trim() } });
   };
 
+  const inputStyle = {
+    width: "100%",
+    background: "transparent",
+    border: "none",
+    borderBottom: `1px solid ${colors.border}`,
+    color: colors.text,
+    fontSize: "20px",
+    fontFamily: "inherit",
+    padding: "8px 0",
+    outline: "none",
+    letterSpacing: "0.02em",
+  };
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        backgroundColor: "#0a0a0a",
-        color: "#e8e8e8",
-        fontFamily: "'Space Mono', 'Courier New', monospace",
+    <div style={{
+      minHeight: "100vh",
+      backgroundColor: colors.bg,
+      color: colors.text,
+      fontFamily: "'Space Mono', 'Courier New', monospace",
+      display: "flex",
+      flexDirection: "column",
+    }}>
+      <Header />
+
+      <main style={{
+        flex: 1,
         display: "flex",
         flexDirection: "column",
-      }}
-    >
-      {/* Header */}
-      <header
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "20px 40px",
-          borderBottom: "1px solid #1e1e1e",
-        }}
-      >
-        <div style={{ fontSize: "24px", fontWeight: 700, letterSpacing: "0.05em" }}>
-          <span style={{ color: "#ff2222" }}>$</span>JOB
-        </div>
-        <div style={{ fontSize: "11px", color: "#666", letterSpacing: "0.15em" }}>
-          MARKET OPEN · CAREER SIGNALS LIVE
-        </div>
-      </header>
-
-      {/* Main */}
-      <main
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          padding: "60px 40px",
-        }}
-      >
+        justifyContent: "center",
+        alignItems: "center",
+        padding: "60px 40px",
+      }}>
         <div style={{ width: "100%", maxWidth: "480px" }}>
-          <p
-            style={{
-              fontSize: "11px",
-              color: "#444",
-              letterSpacing: "0.2em",
-              marginBottom: "48px",
-              textAlign: "center",
-            }}
-          >
+          <p style={{
+            fontSize: "11px",
+            color: colors.textMuted,
+            letterSpacing: "0.2em",
+            marginBottom: "48px",
+            textAlign: "center",
+          }}>
             YOUR CAREER IS AN ASSET. ACT ACCORDINGLY.
           </p>
 
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "32px" }}>
             <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "10px",
-                  color: "#555",
-                  letterSpacing: "0.2em",
-                  marginBottom: "8px",
-                }}
-              >
+              <label style={{
+                display: "block",
+                fontSize: "10px",
+                color: colors.textMuted,
+                letterSpacing: "0.2em",
+                marginBottom: "8px",
+              }}>
                 EMPLOYER
               </label>
               <input
@@ -84,31 +77,18 @@ export default function Home() {
                 onChange={(e) => setEmployer(e.target.value)}
                 placeholder="Google"
                 autoFocus
-                style={{
-                  width: "100%",
-                  background: "transparent",
-                  border: "none",
-                  borderBottom: "1px solid #333",
-                  color: "#e8e8e8",
-                  fontSize: "20px",
-                  fontFamily: "inherit",
-                  padding: "8px 0",
-                  outline: "none",
-                  letterSpacing: "0.02em",
-                }}
+                style={inputStyle}
               />
             </div>
 
             <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "10px",
-                  color: "#555",
-                  letterSpacing: "0.2em",
-                  marginBottom: "8px",
-                }}
-              >
+              <label style={{
+                display: "block",
+                fontSize: "10px",
+                color: colors.textMuted,
+                letterSpacing: "0.2em",
+                marginBottom: "8px",
+              }}>
                 ROLE
               </label>
               <input
@@ -116,46 +96,34 @@ export default function Home() {
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
                 placeholder="Software Engineer"
-                style={{
-                  width: "100%",
-                  background: "transparent",
-                  border: "none",
-                  borderBottom: "1px solid #333",
-                  color: "#e8e8e8",
-                  fontSize: "20px",
-                  fontFamily: "inherit",
-                  padding: "8px 0",
-                  outline: "none",
-                  letterSpacing: "0.02em",
-                }}
+                style={inputStyle}
               />
             </div>
 
             <button
               type="submit"
-              disabled={!employer.trim() || !role.trim()}
+              disabled={!ready}
               style={{
                 marginTop: "16px",
                 padding: "14px 24px",
                 background: "transparent",
-                border: employer.trim() && role.trim() ? "1px solid #ff2222" : "1px solid #2a2a2a",
-                color: employer.trim() && role.trim() ? "#ff2222" : "#444",
+                border: `1px solid ${ready ? colors.accent : colors.border}`,
+                color: ready ? colors.accent : colors.textMuted,
                 fontFamily: "inherit",
                 fontSize: "13px",
                 letterSpacing: "0.2em",
-                cursor: employer.trim() && role.trim() ? "pointer" : "not-allowed",
+                cursor: ready ? "pointer" : "not-allowed",
                 transition: "all 0.15s",
               }}
               onMouseEnter={(e) => {
-                if (employer.trim() && role.trim()) {
-                  (e.target as HTMLButtonElement).style.background = "#ff2222";
-                  (e.target as HTMLButtonElement).style.color = "#0a0a0a";
+                if (ready) {
+                  (e.target as HTMLButtonElement).style.background = colors.accent;
+                  (e.target as HTMLButtonElement).style.color = colors.bg;
                 }
               }}
               onMouseLeave={(e) => {
                 (e.target as HTMLButtonElement).style.background = "transparent";
-                (e.target as HTMLButtonElement).style.color =
-                  employer.trim() && role.trim() ? "#ff2222" : "#3a1a1a";
+                (e.target as HTMLButtonElement).style.color = ready ? colors.accent : colors.textMuted;
               }}
             >
               ANALYZE POSITION →
@@ -164,20 +132,23 @@ export default function Home() {
         </div>
       </main>
 
-      <footer
-        style={{
-          padding: "16px 40px",
-          borderTop: "1px solid #111",
-          display: "flex",
-          justifyContent: "space-between",
-          fontSize: "10px",
-          color: "#2a2a2a",
-          letterSpacing: "0.15em",
-        }}
-      >
+      <footer style={{
+        padding: "16px 40px",
+        borderTop: `1px solid ${colors.borderMuted}`,
+        display: "flex",
+        justifyContent: "space-between",
+        fontSize: "10px",
+        color: colors.textFaint,
+        letterSpacing: "0.15em",
+      }}>
         <span>NYSE · NASDAQ · CAREER EXCHANGE</span>
         <span>AI-POWERED · NOT FINANCIAL ADVICE</span>
       </footer>
+
+      <style>{`
+        input::placeholder { color: ${colors.textDim}; }
+        input { caret-color: ${colors.accent}; }
+      `}</style>
     </div>
   );
 }
