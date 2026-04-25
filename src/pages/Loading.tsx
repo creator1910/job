@@ -80,11 +80,11 @@ export default function Loading() {
         flex: 1,
         display: "flex",
         flexDirection: "column",
-        padding: "48px 40px",
-        maxWidth: "720px",
+        padding: "40px 24px",
+        maxWidth: "680px",
         margin: "0 auto",
         width: "100%",
-        gap: "40px",
+        gap: "32px",
       }}>
         {/* Position + spinner */}
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
