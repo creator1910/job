@@ -82,7 +82,7 @@ export default function Loading() {
           ANALYZING MARKET SIGNALS...
         </p>
         {state && (
-          <p style={{ fontSize: "11px", color: "#333", letterSpacing: "0.1em" }}>
+          <p style={{ fontSize: "11px", color: "#555", letterSpacing: "0.1em" }}>
             {state.employer.toUpperCase()} / {state.role.toUpperCase()}
           </p>
         )}

@@ -163,6 +163,21 @@ export default function Home() {
           </form>
         </div>
       </main>
+
+      <footer
+        style={{
+          padding: "16px 40px",
+          borderTop: "1px solid #111",
+          display: "flex",
+          justifyContent: "space-between",
+          fontSize: "10px",
+          color: "#2a2a2a",
+          letterSpacing: "0.15em",
+        }}
+      >
+        <span>NYSE · NASDAQ · CAREER EXCHANGE</span>
+        <span>AI-POWERED · NOT FINANCIAL ADVICE</span>
+      </footer>
     </div>
   );
 }
