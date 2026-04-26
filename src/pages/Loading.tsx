@@ -19,10 +19,46 @@ export default function Loading() {
 
   const sourcesRef = useRef<TavilySource[]>([]);
   const analysisTextRef = useRef("");
+  const analysisQueueRef = useRef("");
+  const typingRef = useRef(false);
+  const unmountedRef = useRef(false);
   const sourceFeedRef = useRef<HTMLDivElement>(null);
   const analysisFeedRef = useRef<HTMLDivElement>(null);
   const sourceFeedFade = useScrollFade(sourceFeedRef, sources.length);
   const analysisFeedFade = useScrollFade(analysisFeedRef, analysisText);
+
+  const flushAnalysisQueue = () => {
+    if (typingRef.current) return;
+    typingRef.current = true;
+
+    const tick = () => {
+      if (unmountedRef.current) return;
+
+      if (!analysisQueueRef.current) {
+        typingRef.current = false;
+        return;
+      }
+
+      const chunkSize = Math.min(analysisQueueRef.current.length, 5);
+      const nextText = analysisQueueRef.current.slice(0, chunkSize);
+      analysisQueueRef.current = analysisQueueRef.current.slice(chunkSize);
+      setAnalysisText((text) => {
+        const next = text + nextText;
+        analysisTextRef.current = next;
+        return next;
+      });
+
+      window.setTimeout(tick, 8);
+    };
+
+    tick();
+  };
+
+  const waitForAnalysisQueue = async () => {
+    while (typingRef.current || analysisQueueRef.current.length > 0) {
+      await new Promise((resolve) => window.setTimeout(resolve, 40));
+    }
+  };
 
   const onProgress = (step: ProgressStep) => {
     if (step.type === "searching") setPhase("searching");
@@ -35,7 +71,8 @@ export default function Loading() {
     }
     if (step.type === "analyzing") setPhase("analyzing");
     if (step.type === "analysis_token") {
-      setAnalysisText((t) => { const next = t + step.text; analysisTextRef.current = next; return next; });
+      analysisQueueRef.current += step.text;
+      flushAnalysisQueue();
     }
   };
 
@@ -43,9 +80,11 @@ export default function Loading() {
     if (!state) { navigate("/"); return; }
     if (called.current) return;
     called.current = true;
+    unmountedRef.current = false;
 
     analyzePosition(state.employer, state.role, onProgress)
-      .then((verdict) => {
+      .then(async (verdict) => {
+        await waitForAnalysisQueue();
         navigate("/verdict", {
           state: {
             employer: state.employer,
@@ -69,6 +108,10 @@ export default function Loading() {
           },
         });
       });
+
+    return () => {
+      unmountedRef.current = true;
+    };
   }, []);
 
   useEffect(() => {
