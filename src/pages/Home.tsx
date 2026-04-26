@@ -155,21 +155,6 @@ export default function Home() {
         </div>
       </main>
 
-      <footer style={{
-        padding: "16px 40px",
-        borderTop: `1px solid ${colors.borderMuted}`,
-        display: "flex",
-        justifyContent: "space-between",
-        fontSize: "12px",
-        color: colors.textFaint,
-        letterSpacing: "0.12em",
-        position: "relative",
-        zIndex: 1,
-      }}>
-        <span>NYSE · NASDAQ · CAREER EXCHANGE</span>
-        <span>AI-POWERED · NOT FINANCIAL ADVICE</span>
-      </footer>
-
       <style>{`
         input::placeholder { color: ${colors.textDim}; }
         input { caret-color: ${colors.accent}; }
