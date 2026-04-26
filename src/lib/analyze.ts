@@ -19,6 +19,19 @@ export interface TavilySource {
   content: string;
 }
 
+export interface VerdictChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface VerdictChatContext {
+  employer: string;
+  role: string;
+  verdict: Verdict;
+  sources: TavilySource[];
+  researchText: string;
+}
+
 export type ProgressStep =
   | { type: "searching" }
   | { type: "source_found"; source: TavilySource }
@@ -30,51 +43,48 @@ const SYSTEM_PROMPT = `You are a brutally honest career investment analyst. You 
 
 VERDICT DEFINITIONS:
 - BUY: Strong demand for this role at this employer. Growing org, increasing leverage, above-market trajectory. Hold and accumulate more career capital here.
-- HOLD: Stable but not exciting. Acceptable risk. No urgent action required. Reassess in 12 months.
-- SELL: Declining trajectory. Better opportunities exist elsewhere. Begin positioning for exit.
-- SHORT: Actively destroying career capital. Layoffs, AI displacement, org dysfunction, or strategic collapse in progress. Exit immediately.
+- HOLD: Stable, mixed, or uncertain evidence. Acceptable risk, especially when role demand remains healthy or the employer is still investing in this function. No urgent action required. Reassess in 12 months.
+- SELL: Clear role-specific decline. Better opportunities likely exist elsewhere, but there is no immediate career emergency. Begin positioning for exit.
+- SHORT: Actively destroying career capital. Use only for strong, recent, role-specific evidence of layoffs, automation displacement, org dysfunction, or strategic collapse directly affecting this role. Exit immediately.
 
 RULES:
-- First, write 2-3 sentences of raw analysis: what you're seeing in the data, the key signal, why you're leaning the direction you are. Be specific — company names, numbers, dates.
+- First, write the analyst note in this exact format and nothing else:
+  - Line 1: a bold headline of max 14 words that captures the call. Wrap it in **double asterisks**.
+  - Then exactly 3 bullet points starting with "- ". Each bullet is 18-32 words and MUST be a fact PLUS a so-what — i.e. the concrete signal (number, name, date) followed by what it means for THIS person in THIS role. Each bullet should read as one sentence with a clause break (comma or em-dash). Bullets must NOT just restate the structured signals; they must add interpretation, context, or implication.
+  - Final line: a single italic closing in the form "*What would flip this:* <one short condition, max 14 words>".
+  - No other prose, no headings, no closing summary.
+- The structured career_verdict.signals should remain short fragments (6-12 words). The analyst note bullets are the longer interpretive layer.
 - Then call career_verdict with your structured output.
 - The conviction field is signal strength, not a probability. It should answer: "How strongly does the evidence support this exact verdict?" Use 50-64 for weak/mixed evidence, 65-79 for solid directional evidence, 80-89 for strong evidence with multiple concrete signals, and 90-99 only for overwhelming evidence from many recent authoritative sources.
 - Always return 3-5 signals in career_verdict.signals. Do not return an empty signals array.
+- Each signal text MUST be a single short fragment of 6-12 words. No second clause, no semicolons, no "while" / "but" subclauses. Lead with the concrete fact (number, name, date).
 - Never hedge. Never say "it depends." Give a verdict.
-- Never be balanced. Take a position.
+- Take a position, but do not over-penalize generic tech layoffs, broad macro anxiety, or company-wide reorg noise unless it directly affects this role.
+- If evidence is mixed, stale, or mostly generic, prefer HOLD over SELL. If there is strong current hiring, strategic investment, or durable market demand for this role, lean HOLD or BUY unless the negative evidence is role-specific and recent.
+- Reserve SHORT for acute downside. A profitable company with reorgs, cost discipline, or isolated layoffs is usually not SHORT unless the role itself is being eliminated or structurally devalued.
 - Your signals must be specific: numbers, dates, executive names, product names. No vague sentiment.
 - Weigh company health, recent news, hiring activity, and momentum signals. Weight recent signals over older ones.
 - If a signal is grounded in a provided source, include that source's URL in the "url" field. Otherwise omit "url".
 - Your final answer must be the career_verdict structured output.`;
 
-const GOOGLE_ANALYSIS_PROMPT = `You are a brutally honest career investment analyst. You give verdicts, not advice.
-
-VERDICT DEFINITIONS:
-- BUY: Strong demand for this role at this employer. Growing org, increasing leverage, above-market trajectory. Hold and accumulate more career capital here.
-- HOLD: Stable but not exciting. Acceptable risk. No urgent action required. Reassess in 12 months.
-- SELL: Declining trajectory. Better opportunities exist elsewhere. Begin positioning for exit.
-- SHORT: Actively destroying career capital. Layoffs, AI displacement, org dysfunction, or strategic collapse in progress. Exit immediately.
-
-RULES:
-- Write 2-3 sentences of raw analysis: what you're seeing in the data, the key signal, why you're leaning the direction you are. Be specific — company names, numbers, dates.
-- Never hedge. Never say "it depends." Take a position.
-- Never output JSON in this step.
-- Never output the final verdict object in this step.`;
-
 const GOOGLE_STRUCTURED_PROMPT = `You are a brutally honest career investment analyst. You give verdicts, not advice.
 
 VERDICT DEFINITIONS:
 - BUY: Strong demand for this role at this employer. Growing org, increasing leverage, above-market trajectory. Hold and accumulate more career capital here.
-- HOLD: Stable but not exciting. Acceptable risk. No urgent action required. Reassess in 12 months.
-- SELL: Declining trajectory. Better opportunities exist elsewhere. Begin positioning for exit.
-- SHORT: Actively destroying career capital. Layoffs, AI displacement, org dysfunction, or strategic collapse in progress. Exit immediately.
+- HOLD: Stable, mixed, or uncertain evidence. Acceptable risk, especially when role demand remains healthy or the employer is still investing in this function. No urgent action required. Reassess in 12 months.
+- SELL: Clear role-specific decline. Better opportunities likely exist elsewhere, but there is no immediate career emergency. Begin positioning for exit.
+- SHORT: Actively destroying career capital. Use only for strong, recent, role-specific evidence of layoffs, automation displacement, org dysfunction, or strategic collapse directly affecting this role. Exit immediately.
 
 RULES:
 - Return only a JSON object matching the response schema.
 - The conviction field is signal strength, not a probability. Use 50-64 for weak/mixed evidence, 65-79 for solid directional evidence, 80-89 for strong evidence with multiple concrete signals, and 90-99 only for overwhelming evidence from many recent authoritative sources.
 - Always return 3-5 signals. Do not return an empty signals array.
-- The summary field must be one punchy sentence, max 12 words.
+- Each signal text MUST be a single short fragment of 6-12 words. No second clause, no semicolons, no "while" / "but" subclauses. Lead with the concrete fact (number, name, date).
+- The summary field must be one punchy sentence, max 8 words.
 - Never hedge. Never say "it depends." Give a verdict.
-- Never be balanced. Take a position.
+- Take a position, but do not over-penalize generic tech layoffs, broad macro anxiety, or company-wide reorg noise unless it directly affects this role.
+- If evidence is mixed, stale, or mostly generic, prefer HOLD over SELL. If there is strong current hiring, strategic investment, or durable market demand for this role, lean HOLD or BUY unless the negative evidence is role-specific and recent.
+- Reserve SHORT for acute downside. A profitable company with reorgs, cost discipline, or isolated layoffs is usually not SHORT unless the role itself is being eliminated or structurally devalued.
 - Your signals must be specific: numbers, dates, executive names, product names. No vague sentiment.
 - If a signal is grounded in a provided source, include that source's URL in the "url" field. Otherwise omit "url".`;
 
@@ -89,7 +99,7 @@ const VERDICT_SCHEMA = {
         type: "object",
         properties: {
           direction: { type: "string", enum: ["up", "down"] },
-          text: { type: "string", description: "Specific signal with concrete data" },
+          text: { type: "string", description: "One short fragment, 6-12 words, single clause. Lead with the concrete fact (number, name, date)." },
           url: { type: "string", description: "Source URL if grounded in research" },
         },
         required: ["direction", "text"],
@@ -97,7 +107,7 @@ const VERDICT_SCHEMA = {
       minItems: 3,
       maxItems: 5,
     },
-    summary: { type: "string", description: "One punchy sentence, max 12 words" },
+    summary: { type: "string", description: "One punchy sentence, max 8 words" },
   },
   required: ["verdict", "conviction", "signals", "summary"],
 };
@@ -105,21 +115,42 @@ const VERDICT_SCHEMA = {
 const GEMINI_VERDICT_SCHEMA = {
   type: "OBJECT",
   properties: {
-    verdict: { type: "STRING", enum: ["BUY", "HOLD", "SELL", "SHORT"] },
-    conviction: { type: "INTEGER" },
+    verdict: {
+      type: "STRING",
+      enum: ["BUY", "HOLD", "SELL", "SHORT"],
+      description: "The career investment verdict.",
+    },
+    conviction: {
+      type: "INTEGER",
+      description: "Signal strength from 50 to 99, based only on the provided evidence.",
+    },
     signals: {
       type: "ARRAY",
+      description: "Three to five source-grounded signals that support the verdict.",
       items: {
         type: "OBJECT",
         properties: {
-          direction: { type: "STRING", enum: ["up", "down"] },
-          text: { type: "STRING" },
-          url: { type: "STRING" },
+          direction: {
+            type: "STRING",
+            enum: ["up", "down"],
+            description: "Whether this signal improves or damages the career investment case.",
+          },
+          text: {
+            type: "STRING",
+            description: "One short fragment, 6-12 words, single clause. Lead with the concrete fact (number, name, date). No semicolons, no 'while' or 'but' subclauses.",
+          },
+          url: {
+            type: "STRING",
+            description: "The exact source URL from the SOURCES section that supports this signal.",
+          },
         },
-        required: ["direction", "text"],
+        required: ["direction", "text", "url"],
       },
     },
-    summary: { type: "STRING" },
+    summary: {
+      type: "STRING",
+      description: "One punchy sentence, max 8 words.",
+    },
   },
   required: ["verdict", "conviction", "signals", "summary"],
 };
@@ -166,6 +197,17 @@ const ROLE_MARKET_DOMAINS = [
   "careers.microsoft.com", "wellfound.com",
 ];
 
+const COMPANY_SIGNAL_DOMAINS = [
+  "reuters.com", "bloomberg.com", "wsj.com", "ft.com", "cnbc.com",
+  "businessinsider.com", "theverge.com", "techcrunch.com", "fortune.com",
+  "axios.com", "forbes.com", "sec.gov", "investor.", "ir.",
+];
+
+const COMPENSATION_MARKET_DOMAINS = [
+  "levels.fyi", "glassdoor.com", "linkedin.com", "teamblind.com",
+  "layoffs.fyi", "indeed.com",
+];
+
 function isQualitySource(url: string): boolean {
   try {
     const host = new URL(url).hostname.replace("www.", "");
@@ -184,8 +226,52 @@ function isUsableSource(source: { title?: string; url?: string }): boolean {
     "access denied",
     "attention required",
     "enable javascript",
-    "sign in",
+  "sign in",
   ].some((blocked) => title.includes(blocked));
+}
+
+function bucketLabel(bucket?: string): string {
+  switch (bucket) {
+    case "company": return "Company baseline";
+    case "employer": return "Employer news";
+    case "role": return "Employer-role demand";
+    case "role_market": return "Role market";
+    case "risk": return "Downside risk";
+    case "market": return "Compensation and mobility";
+    case "upside": return "Strategic upside";
+    case "broad": return "Broad fallback";
+    default: return "Source";
+  }
+}
+
+function bucketUse(bucket?: string): string {
+  switch (bucket) {
+    case "company": return "company health, trajectory, and operating momentum";
+    case "employer": return "recent employer-specific news and organizational context";
+    case "role": return "current demand for this exact role at this employer";
+    case "role_market": return "broader market demand for this role outside the employer";
+    case "risk": return "layoffs, automation pressure, reorgs, and downside risk";
+    case "market": return "compensation, mobility, and outside-option strength";
+    case "upside": return "strategic investment that could increase role value";
+    case "broad": return "fallback context if stronger evidence is thin";
+    default: return "general context";
+  }
+}
+
+function cleanSnippet(text: string | undefined): string {
+  return (text ?? "")
+    .replace(/\s+/g, " ")
+    .replace(/\[[^\]]+\]\([^)]+\)/g, "")
+    .trim()
+    .slice(0, 420);
+}
+
+function getSourceLimit(resultCount: number): number {
+  if (resultCount >= 32) return 16;
+  if (resultCount >= 24) return 14;
+  if (resultCount >= 16) return 12;
+  if (resultCount >= 10) return 10;
+  return Math.max(4, resultCount);
 }
 
 async function streamResearch(
@@ -193,11 +279,13 @@ async function streamResearch(
   role: string,
   onSource: (source: TavilySource) => void
 ): Promise<{ content: string; sources: TavilySource[] }> {
-  type TavilyResult = { title?: string; url: string; content?: string; snippet?: string; score?: number };
+  type SearchBucket = "company" | "employer" | "role" | "role_market" | "risk" | "market" | "upside" | "broad";
+  type TavilyResult = { title?: string; url: string; content?: string; snippet?: string; score?: number; bucket?: SearchBucket };
 
   const search = async (
+    bucket: SearchBucket,
     query: string,
-    options: { include_domains?: string[]; max_results?: number } = {}
+    options: { max_results?: number } = {}
   ): Promise<{ answer: string; results: TavilyResult[] }> => {
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), 6_000);
@@ -216,14 +304,13 @@ async function streamResearch(
           max_results: options.max_results ?? 8,
           include_answer: true,
           include_raw_content: false,
-          include_domains: options.include_domains,
         }),
       });
       if (!res.ok) throw new Error(`Research failed: ${res.status}`);
       const data = await res.json();
       return {
         answer: typeof data.answer === "string" ? data.answer : "",
-        results: (data.results ?? data.sources ?? []) as TavilyResult[],
+        results: ((data.results ?? data.sources ?? []) as TavilyResult[]).map((result) => ({ ...result, bucket })),
       };
     } finally {
       window.clearTimeout(timeoutId);
@@ -231,16 +318,37 @@ async function streamResearch(
   };
 
   const queries = [
-    search(`${employer} company hiring layoffs reorganization earnings AI strategy`, {
-      include_domains: COMPANY_NEWS_DOMAINS,
-      max_results: 8,
+    // Company-only: broad signal surface.
+    search("company", employer, {
+      max_results: 7,
     }),
-    search(`${employer} careers ${role} jobs hiring openings compensation`, {
-      include_domains: ROLE_MARKET_DOMAINS,
-      max_results: 8,
+    // Employer news: simple modifier for recent company trajectory.
+    search("employer", `${employer} news`, {
+      max_results: 6,
     }),
-    search(`"${employer}" "${role}" hiring layoffs career outlook`, {
-      max_results: 8,
+    // Employer + role: direct match.
+    search("role", `${employer} ${role}`, {
+      max_results: 7,
+    }),
+    // Role-only: broad market demand.
+    search("role_market", role, {
+      max_results: 6,
+    }),
+    // Downside risk: concise and searchable.
+    search("risk", `${employer} layoffs`, {
+      max_results: 7,
+    }),
+    // Compensation/mobility: concise role-company salary surface.
+    search("market", `${employer} ${role} salary`, {
+      max_results: 6,
+    }),
+    // Strategic upside: short product/strategy modifier.
+    search("upside", `${employer} AI`, {
+      max_results: 6,
+    }),
+    // Broad fallback catches useful pages outside curated domains.
+    search("broad", `${employer} ${role} jobs`, {
+      max_results: 6,
     }),
   ];
 
@@ -257,44 +365,63 @@ async function streamResearch(
     return { content: "", sources: [] };
   }
 
-  const employerTokens = employer.toLowerCase().split(/\s+/).filter((token) => token.length > 2);
-  const roleTokens = role.toLowerCase().split(/\W+/).filter((token) => token.length > 2);
-
-  const relevanceScore = (source: TavilyResult): number => {
-    const haystack = `${source.title ?? ""} ${source.url} ${source.content ?? source.snippet ?? ""}`.toLowerCase();
-    const employerHits = employerTokens.filter((token) => haystack.includes(token)).length;
-    const roleHits = roleTokens.filter((token) => haystack.includes(token)).length;
-    const qualityBoost = isQualitySource(source.url) ? 2 : 0;
-    const tavilyScore = typeof source.score === "number" ? source.score : 0;
-    return qualityBoost + employerHits * 2 + roleHits + tavilyScore;
-  };
-
   const seenUrls = new Set<string>();
-  const sources = rawSources
+  const ranked = rawSources
     .filter(isUsableSource)
-    .sort((a, b) => relevanceScore(b) - relevanceScore(a))
     .filter((source) => {
       const normalized = source.url.replace(/\/$/, "");
       if (seenUrls.has(normalized)) return false;
       seenUrls.add(normalized);
-      return relevanceScore(source) >= 2;
-    })
-    .slice(0, 8)
-    .map((source) => ({
+      return true;
+    });
+
+  const selected: TavilyResult[] = [];
+  const bucketOrder: SearchBucket[] = ["company", "employer", "role", "role_market", "risk", "market", "upside", "broad"];
+  for (const bucket of bucketOrder) {
+    const source = ranked.find((candidate) =>
+      candidate.bucket === bucket && !selected.some((selectedSource) => selectedSource.url === candidate.url)
+    );
+    if (source) selected.push(source);
+  }
+  for (const source of ranked) {
+    if (selected.length >= getSourceLimit(ranked.length)) break;
+    if (!selected.some((selectedSource) => selectedSource.url === source.url)) {
+      selected.push(source);
+    }
+  }
+
+  const sourceLimit = getSourceLimit(ranked.length);
+  const sources = selected.slice(0, sourceLimit).map((source) => ({
       title: source.title ?? source.url,
       url: source.url,
-      content: source.content ?? source.snippet ?? "",
-    }));
+      content: cleanSnippet(source.content ?? source.snippet),
+  }));
 
   for (const source of sources) {
     onSource(source);
     await new Promise((resolve) => window.setTimeout(resolve, 90));
   }
 
-  const sourceNotes = sources
-    .map((source, index) => `[${index + 1}] ${source.title}${source.content ? `: ${source.content}` : ""}`)
-    .join("\n");
-  const content = [answer, sourceNotes].filter(Boolean).join("\n\n");
+  const evidenceBrief = selected.slice(0, sourceLimit)
+    .map((source, index) => {
+      const snippet = cleanSnippet(source.content ?? source.snippet);
+      return [
+        `SOURCE ${index + 1}`,
+        `Bucket: ${bucketLabel(source.bucket)}`,
+        `Title: ${source.title ?? source.url}`,
+        `URL: ${source.url}`,
+        snippet ? `Snippet: ${snippet}` : "",
+        `Use for: ${bucketUse(source.bucket)}`,
+      ].filter(Boolean).join("\n");
+    })
+    .join("\n\n");
+
+  const content = [
+    `Research brief for ${employer} / ${role}`,
+    "Interpretation guidance: weigh employer health, role-specific demand, downside risk, compensation/mobility, and strategic upside. Prefer role-specific evidence over generic macro commentary.",
+    answer ? `Tavily answer: ${answer}` : "",
+    evidenceBrief,
+  ].filter(Boolean).join("\n\n");
 
   return { content, sources };
 }
@@ -388,7 +515,14 @@ function buildVerdictPrompt(
   sources: TavilySource[]
 ): string {
   const sourceList = sources.length
-    ? sources.map((s, i) => `[${i + 1}] ${s.title} — ${s.url}`).join("\n")
+    ? sources.map((s, i) => {
+        const snippet = s.content?.replace(/\s+/g, " ").trim();
+        return [
+          `[${i + 1}] ${s.title}`,
+          `URL: ${s.url}`,
+          snippet ? `Evidence: ${snippet}` : "",
+        ].filter(Boolean).join("\n");
+      }).join("\n\n")
     : "No sources available.";
 
   return `Employer: ${employer}
@@ -400,7 +534,7 @@ ${researchContent}
 SOURCES:
 ${sourceList}
 
-Give your verdict.`;
+Give your verdict. Use SOURCES as the evidence base. Every structured signal must cite one exact source URL from SOURCES. Do not cite URLs that are not listed.`;
 }
 
 function buildGoogleAnalysisPrompt(
@@ -409,9 +543,7 @@ function buildGoogleAnalysisPrompt(
   researchContent: string,
   sources: TavilySource[]
 ): string {
-  return `${buildVerdictPrompt(employer, role, researchContent, sources)}
-
-Write only the raw analysis shown to the user while loading.`;
+  return buildVerdictPrompt(employer, role, researchContent, sources);
 }
 
 function buildGoogleStructuredPrompt(
@@ -557,19 +689,26 @@ async function callGoogle(
     },
     body: JSON.stringify({
       systemInstruction: {
-        parts: [{ text: GOOGLE_ANALYSIS_PROMPT }],
+        parts: [{ text: SYSTEM_PROMPT }],
       },
       contents: [{
         role: "user",
         parts: [{ text: buildGoogleAnalysisPrompt(employer, role, researchContent, sources) }],
       }],
       generationConfig: {
-        maxOutputTokens: 2048,
+        maxOutputTokens: 4096,
         temperature: 0.2,
         thinkingConfig: {
-          thinkingBudget: 0,
+          thinkingBudget: 1024,
         },
       },
+      tools: [{
+        functionDeclarations: [{
+          name: "career_verdict",
+          description: "Output a source-grounded career investment verdict. Every signal must be supported by one exact source URL from the prompt.",
+          parameters: GEMINI_VERDICT_SCHEMA,
+        }],
+      }],
     }),
   });
 
@@ -579,6 +718,7 @@ async function callGoogle(
   }
 
   let streamedAnalysis = "";
+  let parsed: Verdict | null = null;
   const onGeminiToken = (text: string) => {
     streamedAnalysis += text;
     onToken(text);
@@ -603,7 +743,7 @@ async function callGoogle(
         if (!raw || raw === "[DONE]") continue;
 
         try {
-          consumeGeminiChunk(JSON.parse(raw) as GeminiChunk, onGeminiToken);
+          parsed = consumeGeminiChunk(JSON.parse(raw) as GeminiChunk, onGeminiToken) ?? parsed;
         } catch {
           continue;
         }
@@ -613,10 +753,36 @@ async function callGoogle(
     const data = await streamRes.json();
     const chunks = Array.isArray(data) ? data : [data];
     for (const chunk of chunks) {
-      consumeGeminiChunk(chunk as GeminiChunk, onGeminiToken);
+      parsed = consumeGeminiChunk(chunk as GeminiChunk, onGeminiToken) ?? parsed;
     }
   }
 
+  if (!parsed) {
+    parsed = parseVerdictFromText(streamedAnalysis);
+  }
+
+  if (!parsed) {
+    parsed = await callGoogleStructuredVerdict(model, apiKey, employer, role, researchContent, sources);
+  }
+
+  if (!parsed) throw new Error("No parseable Google verdict in response");
+  if (!streamedAnalysis.trim()) {
+    onToken(buildFallbackAnalystNote(parsed, researchContent, sources));
+  }
+  parsed.summary = normalizeSummary(parsed.summary, parsed.verdict);
+  parsed.conviction = Math.min(99, Math.max(50, parsed.conviction));
+  parsed.signals = normalizeSignals(parsed, researchContent, sources);
+  return parsed;
+}
+
+async function callGoogleStructuredVerdict(
+  model: string,
+  apiKey: string,
+  employer: string,
+  role: string,
+  researchContent: string,
+  sources: TavilySource[]
+): Promise<Verdict | null> {
   const verdictRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: "POST",
     headers: {
@@ -637,7 +803,7 @@ async function callGoogle(
         responseMimeType: "application/json",
         responseSchema: GEMINI_VERDICT_SCHEMA,
         thinkingConfig: {
-          thinkingBudget: 0,
+          thinkingBudget: 1024,
         },
       },
     }),
@@ -656,13 +822,6 @@ async function callGoogle(
     .trim() ?? "";
   const parsed = coerceVerdict(verdictData) ?? parseVerdictFromText(verdictText);
 
-  if (!parsed) throw new Error("No parseable Google verdict in response");
-  if (!streamedAnalysis.trim()) {
-    onToken(buildFallbackAnalystNote(parsed, researchContent, sources));
-  }
-  parsed.summary = normalizeSummary(parsed.summary, parsed.verdict);
-  parsed.conviction = Math.min(99, Math.max(50, parsed.conviction));
-  parsed.signals = normalizeSignals(parsed, researchContent, sources);
   return parsed;
 }
 
@@ -671,11 +830,34 @@ function buildFallbackAnalystNote(
   researchContent: string,
   sources: TavilySource[]
 ): string {
-  const sourceContext = sources.slice(0, 3).map((source) => source.title).join(" ");
-  const researchContext = researchContent.replace(/\s+/g, " ").trim();
-  const context = researchContext || sourceContext || "The available source set is thin, so the verdict is driven by limited but directional evidence.";
-  const trimmed = context.length > 420 ? `${context.slice(0, 417)}...` : context;
-  return `${trimmed}\n\nStructured verdict: ${verdict.verdict}. Signal strength reflects how strongly the available evidence supports that call, not the probability of a future event.`;
+  const headline = `**${verdict.verdict} call: evidence is directional but not yet conclusive.**`;
+
+  const upCount = (verdict.signals ?? []).filter((s) => s.direction === "up").length;
+  const downCount = (verdict.signals ?? []).filter((s) => s.direction === "down").length;
+  const balanceLine = `- Signal balance is ${upCount} positive vs ${downCount} negative, which keeps the call directional rather than high-conviction and means a single new data point could move the verdict.`;
+
+  const sentences = researchContent
+    .replace(/\s+/g, " ")
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 60 && sentence.length < 240)
+    .slice(0, 2)
+    .map((sentence) => `- ${sentence}`);
+
+  const sourceFallback = sources
+    .slice(0, 2 - sentences.length)
+    .map((source) => `- ${source.title} suggests this thread is worth tracking, but the snippet alone is not enough to anchor a stronger reading.`);
+
+  const bullets = [balanceLine, ...sentences, ...sourceFallback].slice(0, 3);
+  while (bullets.length < 3) {
+    bullets.push("- Evidence set is thin, so the verdict reflects limited directional signals rather than a high-conviction read.");
+  }
+
+  const flipLine = verdict.verdict === "BUY" || verdict.verdict === "HOLD"
+    ? "*What would flip this:* a wave of role-specific layoffs or a clear automation mandate."
+    : "*What would flip this:* a credible reinvestment in this function or fresh role-specific hiring.";
+
+  return [headline, ...bullets, flipLine].join("\n");
 }
 
 function normalizeSignals(
@@ -720,8 +902,188 @@ function normalizeSignals(
 function normalizeSummary(summary: string, verdict: Verdict["verdict"]): string {
   const clean = summary?.replace(/\s+/g, " ").trim() || `${verdict} signal dominates.`;
   const words = clean.split(" ");
-  if (words.length <= 12) return clean;
-  return `${words.slice(0, 12).join(" ").replace(/[.,;:!?]+$/, "")}.`;
+  if (words.length <= 8) return clean;
+  return `${words.slice(0, 8).join(" ").replace(/[.,;:!?]+$/, "")}.`;
+}
+
+function buildAdvisorSystemPrompt(context: VerdictChatContext): string {
+  const signals = context.verdict.signals
+    .map((signal, index) => `${index + 1}. ${signal.direction.toUpperCase()}: ${signal.text}${signal.url ? ` (${signal.url})` : ""}`)
+    .join("\n");
+  const sources = context.sources
+    .map((source, index) => `[${index + 1}] ${source.title}\nURL: ${source.url}${source.content ? `\nSnippet: ${source.content}` : ""}`)
+    .join("\n\n");
+  const notes = context.researchText.replace(/\s+/g, " ").trim().slice(0, 3000);
+
+  return `You are a pragmatic career advisor for someone currently holding this job.
+
+JOB:
+Employer: ${context.employer}
+Role: ${context.role}
+
+VERDICT:
+${context.verdict.verdict}
+Summary: ${context.verdict.summary}
+
+SIGNALS:
+${signals || "No structured signals available."}
+
+SOURCES:
+${sources || "No sources available."}
+
+ANALYST NOTES:
+${notes || "No analyst notes available."}
+
+RULES:
+- Answer like a Bloomberg terminal headline crossed with a no-bullshit mentor. Punchy. Sharp. Final.
+- HARD CAP: exactly ONE sentence. Never two. Never a period followed by more text.
+- Target length: 8-18 words. Never longer than 22 words.
+- Lead with a verb or the verdict. No throat-clearing, no "based on", no "it depends", no "I think", no "you might want to", no "consider", no "perhaps".
+- Banned phrases: "it depends", "in general", "ultimately", "at the end of the day", "make sure to", "keep in mind", "I'd recommend".
+- Be concrete: name the number, the company, the lever, the date.
+- Cut every adjective and adverb that doesn't carry information.
+- If the user asks for a plan, fit it into one sentence using " · " separators (no bullets, no line breaks).
+- No markdown. No bold. No headings. No lists. Plain prose only.
+- Do not invent facts outside the provided context.
+
+TONE EXAMPLES (style only — do not reuse content):
+- "Ask for a 12% bump tied to AI infra scope; walk if they offer less than 8%."
+- "Stay six months, ship one AI launch, then test the market with leverage."
+- "Biggest risk is design org consolidating under product — get a PM-adjacent project now."
+- "Verdict flips to SELL if Q3 hiring freeze hits your function."`;
+}
+
+async function chatWithClaude(
+  context: VerdictChatContext,
+  messages: VerdictChatMessage[],
+  onToken: (text: string) => void
+): Promise<string> {
+  const client = new Anthropic({
+    apiKey: import.meta.env.VITE_ANTHROPIC_KEY,
+    dangerouslyAllowBrowser: true,
+  });
+
+  const stream = client.messages.stream({
+    model: ANTHROPIC_MODEL(),
+    max_tokens: 70,
+    system: buildAdvisorSystemPrompt(context),
+    messages: messages.map((message) => ({
+      role: message.role,
+      content: message.content,
+    })),
+  });
+
+  let reply = "";
+  for await (const event of stream) {
+    if (
+      event.type === "content_block_delta" &&
+      event.delta.type === "text_delta" &&
+      event.delta.text
+    ) {
+      reply += event.delta.text;
+      onToken(event.delta.text);
+    }
+  }
+
+  return reply.trim();
+}
+
+async function chatWithGoogle(
+  context: VerdictChatContext,
+  messages: VerdictChatMessage[],
+  onToken: (text: string) => void
+): Promise<string> {
+  const apiKey = GOOGLE_KEY();
+  if (!apiKey) throw new Error("Missing VITE_GOOGLE_KEY");
+
+  const model = GOOGLE_MODEL().replace(/^models\//, "");
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey,
+    },
+    body: JSON.stringify({
+      systemInstruction: {
+        parts: [{ text: buildAdvisorSystemPrompt(context) }],
+      },
+      contents: messages.map((message) => ({
+        role: message.role === "assistant" ? "model" : "user",
+        parts: [{ text: message.content }],
+      })),
+      generationConfig: {
+        maxOutputTokens: 70,
+        temperature: 0.35,
+        thinkingConfig: {
+          thinkingBudget: 512,
+        },
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const details = await response.text().catch(() => "");
+    throw new Error(`Google chat failed: ${response.status}${details ? ` ${details}` : ""}`);
+  }
+
+  let reply = "";
+  if (response.headers.get("content-type")?.includes("text/event-stream") && response.body) {
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        if (!line.startsWith("data:")) continue;
+        const raw = line.slice(5).trim();
+        if (!raw || raw === "[DONE]") continue;
+
+        try {
+          const chunk = JSON.parse(raw) as GeminiChunk;
+          for (const candidate of chunk.candidates ?? []) {
+            for (const part of candidate.content?.parts ?? []) {
+              if (part.text) {
+                reply += part.text;
+                onToken(part.text);
+              }
+            }
+          }
+        } catch {
+          continue;
+        }
+      }
+    }
+  } else {
+    const data = await response.json() as GeminiChunk;
+    const text = data.candidates
+      ?.flatMap((candidate) => candidate.content?.parts ?? [])
+      .map((part) => part.text ?? "")
+      .join("") ?? "";
+    reply += text;
+    if (text) onToken(text);
+  }
+
+  return reply.trim();
+}
+
+export async function chatWithVerdictAI(
+  context: VerdictChatContext,
+  messages: VerdictChatMessage[],
+  onToken: (text: string) => void
+): Promise<string> {
+  const provider = getAIProvider();
+  const reply = provider === "google"
+    ? await chatWithGoogle(context, messages, onToken)
+    : await chatWithClaude(context, messages, onToken);
+
+  return reply || "I could not generate a useful reply from the current verdict context.";
 }
 
 // ── Mock ────────────────────────────────────────────────────────────────────
@@ -742,16 +1104,18 @@ const MOCK_SOURCES: TavilySource[] = [
 ];
 
 const MOCK_VERDICT: Verdict = {
-  verdict: "SHORT",
-  conviction: 87,
+  verdict: "HOLD",
+  conviction: 72,
   signals: [
-    { direction: "down", text: "3,600 layoffs in Q1 2025 targeted mid-level engineering and product teams, while the performance review window expanded to 18 months; that means the company is still profitable, but individual SWE job security is being repriced downward.", url: "https://techcrunch.com/mock1" },
-    { direction: "down", text: "SWE open roles are down 40% YoY across backend, infrastructure, and product engineering; Meta is still hiring selectively, but the broad internal signal is fewer seats, higher bar, and more automation pressure.", url: "https://bloomberg.com/mock3" },
-    { direction: "down", text: "Internal AI coding tools are being rolled out across engineering, and Zuckerberg's Q1 operating memo frames automation as a margin-expansion lever rather than a support tool for growing headcount.", url: "https://investor.fb.com/mock10" },
-    { direction: "down", text: "LinkedIn and Levels.fyi data both point to a weaker labor market for senior SWE mobility: fewer comparable openings, flatter compensation bands, and longer interview loops for lateral moves.", url: "https://levels.fyi/mock8" },
-    { direction: "up", text: "Compensation remains top-decile and brand equity is still strong, but that is a retention trap in this setup: good cash flow today, deteriorating career capital tomorrow." },
+    { direction: "down", text: "3,600 mid-level SWE layoffs in Q1 2025.", url: "https://techcrunch.com/mock1" },
+    { direction: "down", text: "SWE openings down 40% YoY across the org.", url: "https://bloomberg.com/mock3" },
+    { direction: "down", text: "Internal AI coding tools framed as headcount lever.", url: "https://investor.fb.com/mock10" },
+    { direction: "down", text: "Performance review window stretched to 18 months." },
+    { direction: "up", text: "Top-decile comp and strong brand preserve option value." },
+    { direction: "up", text: "Revenue strong at $36.4B, up 16% YoY.", url: "https://wsj.com/mock2" },
+    { direction: "up", text: "Internal mobility into AI infra still open." },
   ],
-  summary: "Exit before the brand premium stops compensating for the role decay.",
+  summary: "Stay alert, but the seat still has option value.",
 };
 
 // ── Public API ───────────────────────────────────────────────────────────────
@@ -770,7 +1134,7 @@ export async function analyzePosition(
     onProgress({ type: "search_complete", sourceCount: MOCK_SOURCES.length, sources: MOCK_SOURCES });
     await new Promise((r) => setTimeout(r, 200));
     onProgress({ type: "analyzing" });
-    const reasoning = "Revenue is strong at $36.4B and the company is not in financial distress, but that is the wrong lens for this role. The career asset here is not Meta equity; it is the future value of being a software engineer inside this org. The data points in one direction: fewer SWE openings, more aggressive performance filtering, and explicit automation pressure from leadership. Compensation is still excellent, but the risk is that it becomes a premium paid to keep people in place while the role's leverage declines. This is a profitable company with a shrinking opportunity surface for generalist software engineers, which makes the position look less like a long-term compounder and more like a short-term cash harvest.";
+    const reasoning = "Revenue is strong at $36.4B and the company is not in financial distress, which matters because a profitable platform with top-decile compensation still gives this role meaningful option value. The negative signals are real: fewer SWE openings, more aggressive performance filtering, and explicit automation pressure from leadership. But the evidence points more to a tighter, higher-bar environment than an immediate career emergency. This is no longer an easy BUY, but the brand equity, compensation floor, and internal mobility options keep it in HOLD unless the role-specific cuts get sharper.";
     for (const word of reasoning.split(" ")) {
       await new Promise((r) => setTimeout(r, 55));
       onProgress({ type: "analysis_token", text: word + " " });

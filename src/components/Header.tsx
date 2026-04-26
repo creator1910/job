@@ -1,7 +1,10 @@
+import { useNavigate } from "react-router-dom";
 import { useTheme } from "@/lib/theme";
 
-export function Header() {
+export function Header({ accentColor }: { accentColor?: string } = {}) {
+  const navigate = useNavigate();
   const { colors, theme, toggle } = useTheme();
+  const dollarColor = accentColor ?? colors.accent;
 
   return (
     <header style={{
@@ -15,22 +18,26 @@ export function Header() {
       position: "relative",
       zIndex: 2,
     }}>
-      <div style={{ fontSize: "26px", fontWeight: 700, letterSpacing: "0.05em", color: colors.text, flexShrink: 0 }}>
-        <span style={{ color: colors.accent }}>$</span>JOB
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: "20px", minWidth: 0 }}>
-        <div style={{
-          fontSize: "13px",
-          color: colors.textMuted,
-          letterSpacing: "0.12em",
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
+      <button
+        type="button"
+        onClick={() => navigate("/")}
+        title="Back to start"
+        style={{
+          background: "transparent",
+          border: "none",
+          padding: 0,
+          cursor: "pointer",
+          fontFamily: "inherit",
+          fontSize: "26px",
+          fontWeight: 700,
+          letterSpacing: "0.05em",
+          color: colors.text,
+          flexShrink: 0,
         }}
-          className="header-status"
-        >
-          MARKET OPEN · CAREER SIGNALS LIVE
-        </div>
+      >
+        <span style={{ color: dollarColor, transition: "color 0.4s ease-out" }}>$</span>JOB
+      </button>
+      <div style={{ display: "flex", alignItems: "center", gap: "20px", minWidth: 0 }}>
         <button
           onClick={toggle}
           title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
@@ -65,11 +72,6 @@ export function Header() {
           {theme === "dark" ? "◐ LIGHT" : "◑ DARK"}
         </button>
       </div>
-      <style>{`
-        @media (max-width: 540px) {
-          .header-status { display: none !important; }
-        }
-      `}</style>
     </header>
   );
 }
