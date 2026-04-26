@@ -59,11 +59,16 @@ RULES:
 - Always return 3-5 signals in career_verdict.signals. Do not return an empty signals array.
 - Each signal text MUST be a single short fragment of 6-12 words. No second clause, no semicolons, no "while" / "but" subclauses. Lead with the concrete fact (number, name, date).
 - Never hedge. Never say "it depends." Give a verdict.
-- Take a position, but do not over-penalize generic tech layoffs, broad macro anxiety, or company-wide reorg noise unless it directly affects this role.
-- If evidence is mixed, stale, or mostly generic, prefer HOLD over SELL. If there is strong current hiring, strategic investment, or durable market demand for this role, lean HOLD or BUY unless the negative evidence is role-specific and recent.
-- Reserve SHORT for acute downside. A profitable company with reorgs, cost discipline, or isolated layoffs is usually not SHORT unless the role itself is being eliminated or structurally devalued.
+- Take a position. HOLD is a real verdict, not a parking lot for indecision.
+- HOLD QUOTA: in the long run roughly one in four verdicts should be HOLD. Use it ONLY when up-signals and down-signals are genuinely close to 50/50 in count AND comparable in weight AND no signal is decisive. If the picture leans 60/40 or stronger in either direction, you MUST commit to BUY/SELL (or BUY/SHORT, SELL/SHORT) instead.
+- BUY when role-specific positives lean (≥60% of weighted signals are up) AND at least one positive is concrete + recent (active hiring, strategic investment in this function, comp/title leverage, scope expansion).
+- SELL when role-specific negatives lean (≥60% of weighted signals are down) AND no immediate emergency.
+- SHORT when acute role-specific downside is present: layoffs targeting this exact function, automation eliminating the role, strategic collapse of the function, or recent role-specific firings at scale. Two or more clearly negative role-specific signals + no offsetting strong positive = at least SELL, often SHORT.
+- Anti-fence-sit rules: if you are about to write HOLD, first re-check both columns. If positives clearly outnumber negatives (3+ vs 0–1) → flip to BUY. If negatives clearly outnumber positives (3+ vs 0–1) → flip to SELL or SHORT. Only stay on HOLD if you can name the offsetting force on each side.
+- Do not over-penalize generic tech layoffs, broad macro anxiety, or company-wide reorg noise that does not directly affect this role.
+- A profitable company with isolated layoffs in OTHER functions is not a negative signal for this role. But layoffs in this exact function ARE a strong negative signal.
 - Your signals must be specific: numbers, dates, executive names, product names. No vague sentiment.
-- Weigh company health, recent news, hiring activity, and momentum signals. Weight recent signals over older ones.
+- Weigh company health, recent news, hiring activity, and momentum signals. Weight recent signals (≤6 months) at roughly 2× older signals.
 - If a signal is grounded in a provided source, include that source's URL in the "url" field. Otherwise omit "url".
 - Your final answer must be the career_verdict structured output.`;
 
@@ -82,10 +87,16 @@ RULES:
 - Each signal text MUST be a single short fragment of 6-12 words. No second clause, no semicolons, no "while" / "but" subclauses. Lead with the concrete fact (number, name, date).
 - The summary field must be one punchy sentence, max 8 words.
 - Never hedge. Never say "it depends." Give a verdict.
-- Take a position, but do not over-penalize generic tech layoffs, broad macro anxiety, or company-wide reorg noise unless it directly affects this role.
-- If evidence is mixed, stale, or mostly generic, prefer HOLD over SELL. If there is strong current hiring, strategic investment, or durable market demand for this role, lean HOLD or BUY unless the negative evidence is role-specific and recent.
-- Reserve SHORT for acute downside. A profitable company with reorgs, cost discipline, or isolated layoffs is usually not SHORT unless the role itself is being eliminated or structurally devalued.
+- Take a position. HOLD is a real verdict, not a parking lot for indecision.
+- HOLD QUOTA: in the long run roughly one in four verdicts should be HOLD. Use it ONLY when up-signals and down-signals are genuinely close to 50/50 in count AND comparable in weight AND no signal is decisive. If the picture leans 60/40 or stronger in either direction, you MUST commit to BUY/SELL (or SHORT) instead.
+- BUY when role-specific positives lean (≥60% of weighted signals are up) AND at least one positive is concrete + recent (active hiring, strategic investment in this function, comp/title leverage, scope expansion).
+- SELL when role-specific negatives lean (≥60% of weighted signals are down) AND no immediate emergency.
+- SHORT when acute role-specific downside is present: layoffs targeting this exact function, automation eliminating the role, strategic collapse of the function, or recent role-specific firings at scale. Two or more clearly negative role-specific signals + no offsetting strong positive = at least SELL, often SHORT.
+- Anti-fence-sit rules: if you are about to write HOLD, first re-check both columns. If positives clearly outnumber negatives (3+ vs 0–1) → flip to BUY. If negatives clearly outnumber positives (3+ vs 0–1) → flip to SELL or SHORT. Only stay on HOLD if you can name the offsetting force on each side.
+- Do not over-penalize generic tech layoffs, broad macro anxiety, or company-wide reorg noise that does not directly affect this role.
+- A profitable company with isolated layoffs in OTHER functions is not a negative signal for this role. But layoffs in this exact function ARE a strong negative signal.
 - Your signals must be specific: numbers, dates, executive names, product names. No vague sentiment.
+- Weight recent signals (≤6 months) at roughly 2× older signals.
 - If a signal is grounded in a provided source, include that source's URL in the "url" field. Otherwise omit "url".`;
 
 const VERDICT_SCHEMA = {
