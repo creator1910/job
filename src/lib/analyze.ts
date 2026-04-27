@@ -174,6 +174,13 @@ const VERDICT_TOOL: Anthropic.Tool = {
 
 const TAVILY_KEY = () => import.meta.env.VITE_TAVILY_KEY as string;
 const GOOGLE_KEY = () => import.meta.env.VITE_GOOGLE_KEY as string;
+const ANTHROPIC_KEY = () => import.meta.env.VITE_ANTHROPIC_KEY as string;
+const JOB_API_URL = () => (import.meta.env.VITE_JOB_API_URL as string | undefined)?.trim() ?? "";
+const SUPABASE_URL = () => (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim() ?? "";
+const SUPABASE_ANON_KEY = () =>
+  ((import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ||
+    (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ||
+    "").trim();
 const GOOGLE_MODEL = () => (import.meta.env.VITE_GOOGLE_MODEL as string | undefined) || "gemini-2.5-flash";
 const ANTHROPIC_MODEL = () => (import.meta.env.VITE_ANTHROPIC_MODEL as string | undefined) || "claude-haiku-4-5-20251001";
 
@@ -183,6 +190,54 @@ function getAIProvider(): AIProvider {
   const provider = ((import.meta.env.VITE_AI_PROVIDER as string | undefined) || "anthropic").trim().toLowerCase();
   if (provider === "google" || provider === "anthropic") return provider;
   throw new Error(`Unsupported VITE_AI_PROVIDER "${provider}". Use "google" or "anthropic".`);
+}
+
+function hasProviderKey(provider = getAIProvider()): boolean {
+  return provider === "google" ? Boolean(GOOGLE_KEY()) : Boolean(ANTHROPIC_KEY());
+}
+
+function shouldUseMockMode(): boolean {
+  if (import.meta.env.VITE_MOCK === "true") return true;
+  if (import.meta.env.VITE_MOCK === "false") return false;
+  if (getJobApiUrl()) return false;
+  return !TAVILY_KEY() || !hasProviderKey();
+}
+
+function getJobApiUrl(): string {
+  const explicit = JOB_API_URL();
+  if (explicit) return explicit.replace(/\/$/, "");
+
+  const supabaseUrl = SUPABASE_URL();
+  if (supabaseUrl) return `${supabaseUrl.replace(/\/$/, "")}/functions/v1/job-ai`;
+
+  return "";
+}
+
+async function callJobApi<T>(payload: Record<string, unknown>): Promise<T> {
+  const url = getJobApiUrl();
+  if (!url) throw new Error("Missing VITE_JOB_API_URL or VITE_SUPABASE_URL");
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  const anonKey = SUPABASE_ANON_KEY();
+  if (anonKey) {
+    headers.Authorization = `Bearer ${anonKey}`;
+    headers.apikey = anonKey;
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const details = await response.text().catch(() => "");
+    throw new Error(`Job API failed: ${response.status}${details ? ` ${details}` : ""}`);
+  }
+
+  return response.json() as Promise<T>;
 }
 
 // Domains considered authoritative for career/company research
@@ -445,7 +500,7 @@ async function callClaude(
   onToken: (text: string) => void
 ): Promise<Verdict> {
   const client = new Anthropic({
-    apiKey: import.meta.env.VITE_ANTHROPIC_KEY,
+    apiKey: ANTHROPIC_KEY(),
     dangerouslyAllowBrowser: true,
   });
 
@@ -970,7 +1025,7 @@ async function chatWithClaude(
   onToken: (text: string) => void
 ): Promise<string> {
   const client = new Anthropic({
-    apiKey: import.meta.env.VITE_ANTHROPIC_KEY,
+    apiKey: ANTHROPIC_KEY(),
     dangerouslyAllowBrowser: true,
   });
 
@@ -1089,6 +1144,22 @@ export async function chatWithVerdictAI(
   messages: VerdictChatMessage[],
   onToken: (text: string) => void
 ): Promise<string> {
+  if (shouldUseMockMode()) {
+    const reply = buildMockAdvisorReply(context, messages[messages.length - 1]?.content ?? "");
+    onToken(reply);
+    return reply;
+  }
+
+  if (getJobApiUrl()) {
+    const { reply } = await callJobApi<{ reply: string }>({
+      action: "chat",
+      context,
+      messages,
+    });
+    if (reply) onToken(reply);
+    return reply || "I could not generate a useful reply from the current verdict context.";
+  }
+
   const provider = getAIProvider();
   const reply = provider === "google"
     ? await chatWithGoogle(context, messages, onToken)
@@ -1129,6 +1200,28 @@ const MOCK_VERDICT: Verdict = {
   summary: "Stay alert, but the seat still has option value.",
 };
 
+function buildMockAdvisorReply(context: VerdictChatContext, question: string): string {
+  const normalized = question.toLowerCase();
+
+  if (normalized.includes("flip") || normalized.includes("change")) {
+    return `${context.verdict.verdict} flips if role-specific hiring, cuts, or automation signals move decisively.`;
+  }
+
+  if (normalized.includes("negotiat") || normalized.includes("salary") || normalized.includes("raise")) {
+    return `Anchor on ${context.employer} brand value, but demand scope or comp for measurable leverage.`;
+  }
+
+  if (normalized.includes("risk")) {
+    return `Biggest risk is role demand tightening faster than your internal mobility options.`;
+  }
+
+  if (normalized.includes("plan")) {
+    return `Ship visible work now, test the market quietly, reassess after the next hiring signal.`;
+  }
+
+  return `${context.verdict.verdict}: preserve optionality, track role-specific demand, and avoid overreacting to broad noise.`;
+}
+
 // ── Public API ───────────────────────────────────────────────────────────────
 
 export async function analyzePosition(
@@ -1136,7 +1229,36 @@ export async function analyzePosition(
   role: string,
   onProgress: (step: ProgressStep) => void
 ): Promise<Verdict> {
-  if (import.meta.env.VITE_MOCK === "true") {
+  if (import.meta.env.VITE_MOCK !== "true" && getJobApiUrl()) {
+    onProgress({ type: "searching" });
+    const result = await callJobApi<{
+      verdict: Verdict;
+      sources: TavilySource[];
+      analysisText?: string;
+    }>({
+      action: "analyze",
+      employer,
+      role,
+    });
+
+    const sources = result.sources ?? [];
+    for (const source of sources) {
+      onProgress({ type: "source_found", source });
+      await new Promise((resolve) => window.setTimeout(resolve, 90));
+    }
+    onProgress({ type: "search_complete", sourceCount: sources.length, sources });
+    onProgress({ type: "analyzing" });
+
+    const analysisText = result.analysisText?.trim() || buildFallbackAnalystNote(result.verdict, "", sources);
+    for (const word of analysisText.split(" ")) {
+      onProgress({ type: "analysis_token", text: `${word} ` });
+      await new Promise((resolve) => window.setTimeout(resolve, 18));
+    }
+
+    return result.verdict;
+  }
+
+  if (shouldUseMockMode()) {
     onProgress({ type: "searching" });
     for (const src of MOCK_SOURCES) {
       await new Promise((r) => setTimeout(r, 350));

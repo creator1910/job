@@ -65,7 +65,7 @@ bun install                   # or: npm install / pnpm install
 bun run dev                   # http://localhost:8080
 ```
 
-For a no-key offline demo, set `VITE_MOCK=true` in `.env` and run `bun run dev`. The app will replay a deterministic Meta SWE scenario.
+For a no-key offline demo, leave `VITE_MOCK` blank or set `VITE_MOCK=true` in `.env` and run `bun run dev`. The app will replay a deterministic Meta SWE scenario.
 
 ---
 
@@ -199,12 +199,15 @@ All variables are read from `.env` by Vite (must be `VITE_`-prefixed to be expos
 | Variable | Required | Default | Purpose |
 |---|---|---|---|
 | `VITE_AI_PROVIDER` | yes | `anthropic` | `google` or `anthropic` — picks the LLM backend |
+| `VITE_JOB_API_URL` | production | — | Public Edge Function URL, e.g. `https://<project>.supabase.co/functions/v1/job-ai` |
+| `VITE_SUPABASE_URL` | production fallback | — | Used to derive the `job-ai` function URL when `VITE_JOB_API_URL` is blank |
+| `VITE_SUPABASE_ANON_KEY` | if function requires JWT | — | Public Supabase anon key; not a provider secret |
 | `VITE_ANTHROPIC_KEY` | if provider = anthropic | — | Anthropic API key |
 | `VITE_ANTHROPIC_MODEL` | no | `claude-haiku-4-5-20251001` | Any Anthropic model id with tool-use support |
 | `VITE_GOOGLE_KEY` | if provider = google | — | Google AI Studio (Gemini) API key |
 | `VITE_GOOGLE_MODEL` | no | `gemini-2.5-flash` | Any Gemini model id with function-calling + streaming |
 | `VITE_TAVILY_KEY` | yes (live mode) | — | Tavily Search API key — required for the 8 research queries |
-| `VITE_MOCK` | no | `false` | If `true`, skips all network calls and replays a built-in mock verdict |
+| `VITE_MOCK` | no | auto | If blank, missing keys fall back to the built-in mock verdict; `true` always mocks; `false` forces live APIs |
 
 `.env.example` ships with sensible defaults; only the three secrets need to be filled in.
 
@@ -216,7 +219,25 @@ All variables are read from `.env` by Vite (must be `VITE_`-prefixed to be expos
 |---|---|---|
 | **Live (Anthropic)** | `VITE_AI_PROVIDER=anthropic` + key | Tavily research + Claude Haiku verdict |
 | **Live (Google)** | `VITE_AI_PROVIDER=google` + key | Tavily research + Gemini 2.5 Flash verdict |
-| **Mock** | `VITE_MOCK=true` | Replays Meta-SWE scenario; no network calls; useful for demos and judges without keys |
+| **Mock** | `VITE_MOCK=true` or missing live keys with blank `VITE_MOCK` | Replays Meta-SWE scenario; no network calls; useful for demos and judges without keys |
+
+### Lovable deploy note
+
+For a real public deployment, use the Edge Function in `supabase/functions/job-ai`. Store these private secrets in Lovable/Supabase Cloud secrets, not frontend env:
+
+| Secret | Purpose |
+|---|---|
+| `TAVILY_KEY` | Tavily Search API key |
+| `GOOGLE_KEY` | Google AI Studio key |
+| `GOOGLE_MODEL` | Optional, defaults to `gemini-2.5-flash` |
+
+Then set one public frontend variable:
+
+```sh
+VITE_JOB_API_URL=https://<project>.supabase.co/functions/v1/job-ai
+```
+
+If Lovable injects `VITE_SUPABASE_URL`, the frontend can derive the same URL automatically. Do not put private provider keys directly in frontend `VITE_*` variables unless you accept that they are visible in the browser bundle. Lovable's current guidance is to store sensitive credentials in **Cloud -> Secrets** and access them through Edge Functions, not client-side code.
 
 ---
 
