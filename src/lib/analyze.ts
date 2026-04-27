@@ -196,9 +196,15 @@ function hasProviderKey(provider = getAIProvider()): boolean {
   return provider === "google" ? Boolean(GOOGLE_KEY()) : Boolean(ANTHROPIC_KEY());
 }
 
+function hasEdgeFunction(): boolean {
+  // Supabase client is always configured via Lovable Cloud, so the job-ai edge function is available.
+  return true;
+}
+
 function shouldUseMockMode(): boolean {
   if (import.meta.env.VITE_MOCK === "true") return true;
   if (import.meta.env.VITE_MOCK === "false") return false;
+  if (hasEdgeFunction()) return false;
   if (getJobApiUrl()) return false;
   return !TAVILY_KEY() || !hasProviderKey();
 }
