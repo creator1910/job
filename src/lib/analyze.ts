@@ -214,30 +214,12 @@ function getJobApiUrl(): string {
 }
 
 async function callJobApi<T>(payload: Record<string, unknown>): Promise<T> {
-  const url = getJobApiUrl();
-  if (!url) throw new Error("Missing VITE_JOB_API_URL or VITE_SUPABASE_URL");
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  const anonKey = SUPABASE_ANON_KEY();
-  if (anonKey) {
-    headers.Authorization = `Bearer ${anonKey}`;
-    headers.apikey = anonKey;
+  const { supabase } = await import("@/integrations/supabase/client");
+  const { data, error } = await supabase.functions.invoke("job-ai", { body: payload });
+  if (error) {
+    throw new Error(`Job API failed: ${error.message ?? "unknown error"}`);
   }
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    const details = await response.text().catch(() => "");
-    throw new Error(`Job API failed: ${response.status}${details ? ` ${details}` : ""}`);
-  }
-
-  return response.json() as Promise<T>;
+  return data as T;
 }
 
 // Domains considered authoritative for career/company research
