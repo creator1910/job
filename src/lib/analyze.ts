@@ -1217,7 +1217,7 @@ export async function analyzePosition(
   role: string,
   onProgress: (step: ProgressStep) => void
 ): Promise<Verdict> {
-  if (import.meta.env.VITE_MOCK !== "true" && getJobApiUrl()) {
+  if (import.meta.env.VITE_MOCK !== "true" && hasEdgeFunction()) {
     onProgress({ type: "searching" });
     const result = await callJobApi<{
       verdict: Verdict;
