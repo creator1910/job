@@ -1138,7 +1138,7 @@ export async function chatWithVerdictAI(
     return reply;
   }
 
-  if (getJobApiUrl()) {
+  if (hasEdgeFunction()) {
     const { reply } = await callJobApi<{ reply: string }>({
       action: "chat",
       context,
