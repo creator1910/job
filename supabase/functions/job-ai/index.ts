@@ -329,7 +329,7 @@ async function callGeminiText(prompt: string): Promise<string> {
   if (!apiKey) throw new Error("Missing GOOGLE_KEY secret");
 
   const model = (env("GOOGLE_MODEL") || "gemini-2.5-flash").replace(/^models\//, "");
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+  const response = await fetchGeminiWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -344,11 +344,6 @@ async function callGeminiText(prompt: string): Promise<string> {
       },
     }),
   });
-
-  if (!response.ok) {
-    const details = await response.text().catch(() => "");
-    throw new Error(`Google chat failed: ${response.status}${details ? ` ${details}` : ""}`);
-  }
 
   const data = await response.json();
   return data.candidates
