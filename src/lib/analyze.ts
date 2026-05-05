@@ -1019,7 +1019,7 @@ async function chatWithClaude(
 
   const stream = client.messages.stream({
     model: ANTHROPIC_MODEL(),
-    max_tokens: 70,
+    max_tokens: 220,
     system: buildAdvisorSystemPrompt(context),
     messages: messages.map((message) => ({
       role: message.role,
@@ -1066,10 +1066,10 @@ async function chatWithGoogle(
         parts: [{ text: message.content }],
       })),
       generationConfig: {
-        maxOutputTokens: 70,
+        maxOutputTokens: 220,
         temperature: 0.35,
         thinkingConfig: {
-          thinkingBudget: 512,
+          thinkingBudget: 0,
         },
       },
     }),
