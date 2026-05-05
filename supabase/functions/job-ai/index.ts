@@ -1,5 +1,25 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 
+async function fetchGeminiWithRetry(url: string, init: RequestInit, attempts = 4): Promise<Response> {
+  let lastErr = "";
+  for (let i = 0; i < attempts; i++) {
+    const res = await fetch(url, init);
+    if (res.ok) return res;
+    const status = res.status;
+    const body = await res.text().catch(() => "");
+    lastErr = `${status} ${body}`;
+    // Retry on transient overload / rate limit
+    if (status === 429 || status === 500 || status === 502 || status === 503 || status === 504) {
+      const delay = 600 * Math.pow(2, i) + Math.floor(Math.random() * 250);
+      await new Promise((r) => setTimeout(r, delay));
+      continue;
+    }
+    throw new Error(`Google failed: ${lastErr}`);
+  }
+  throw new Error(`Google failed after retries: ${lastErr}`);
+}
+
+
 type Signal = {
   direction: "up" | "down";
   text: string;
