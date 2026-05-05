@@ -306,13 +306,15 @@ function buildChatPrompt(context: ChatContext, messages: ChatMessage[]): string 
   const sources = context.sources
     .map((source, index) => `[${index + 1}] ${source.title}\nURL: ${source.url}\nSnippet: ${source.content}`)
     .join("\n\n");
-  const lastQuestion = messages[messages.length - 1]?.content ?? "";
+  const conversation = messages
+    .map((m) => `${m.role === "assistant" ? "Advisor" : "User"}: ${m.content}`)
+    .join("\n");
 
-  return `Answer exactly one sentence, 8-22 words, direct and concrete.
+  return `You are a pragmatic career advisor. Answer the user's last question directly and concretely in 2-5 short sentences (about 40-90 words). Ground every claim in the verdict, signals, or sources below. No hedging, no preamble, no markdown headers.
 
 Employer: ${context.employer}
 Role: ${context.role}
-Verdict: ${context.verdict.verdict}
+Verdict: ${context.verdict.verdict} (conviction ${context.verdict.conviction})
 Summary: ${context.verdict.summary}
 
 Signals:
@@ -321,7 +323,10 @@ ${signals}
 Sources:
 ${sources}
 
-User question: ${lastQuestion}`;
+Conversation:
+${conversation}
+
+Advisor:`;
 }
 
 async function callGeminiText(prompt: string): Promise<string> {
@@ -338,8 +343,9 @@ async function callGeminiText(prompt: string): Promise<string> {
     body: JSON.stringify({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
-        maxOutputTokens: 80,
-        temperature: 0.35,
+        maxOutputTokens: 400,
+        temperature: 0.4,
+        thinkingConfig: { thinkingBudget: 0 },
       },
     }),
   });
