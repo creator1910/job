@@ -338,8 +338,9 @@ async function callGeminiText(prompt: string): Promise<string> {
     body: JSON.stringify({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
-        maxOutputTokens: 80,
-        temperature: 0.35,
+        maxOutputTokens: 400,
+        temperature: 0.4,
+        thinkingConfig: { thinkingBudget: 0 },
       },
     }),
   });
