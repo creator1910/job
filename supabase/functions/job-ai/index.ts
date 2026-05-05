@@ -1,5 +1,25 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 
+async function fetchGeminiWithRetry(url: string, init: RequestInit, attempts = 4): Promise<Response> {
+  let lastErr = "";
+  for (let i = 0; i < attempts; i++) {
+    const res = await fetch(url, init);
+    if (res.ok) return res;
+    const status = res.status;
+    const body = await res.text().catch(() => "");
+    lastErr = `${status} ${body}`;
+    // Retry on transient overload / rate limit
+    if (status === 429 || status === 500 || status === 502 || status === 503 || status === 504) {
+      const delay = 600 * Math.pow(2, i) + Math.floor(Math.random() * 250);
+      await new Promise((r) => setTimeout(r, delay));
+      continue;
+    }
+    throw new Error(`Google failed: ${lastErr}`);
+  }
+  throw new Error(`Google failed after retries: ${lastErr}`);
+}
+
+
 type Signal = {
   direction: "up" | "down";
   text: string;
@@ -233,7 +253,7 @@ async function callGeminiJson(prompt: string): Promise<Verdict> {
   if (!apiKey) throw new Error("Missing GOOGLE_KEY secret");
 
   const model = (env("GOOGLE_MODEL") || "gemini-2.5-flash").replace(/^models\//, "");
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+  const response = await fetchGeminiWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -250,11 +270,6 @@ async function callGeminiJson(prompt: string): Promise<Verdict> {
       },
     }),
   });
-
-  if (!response.ok) {
-    const details = await response.text().catch(() => "");
-    throw new Error(`Google failed: ${response.status}${details ? ` ${details}` : ""}`);
-  }
 
   const data = await response.json();
   const text = data.candidates
@@ -334,7 +349,7 @@ async function callGeminiText(prompt: string): Promise<string> {
   if (!apiKey) throw new Error("Missing GOOGLE_KEY secret");
 
   const model = (env("GOOGLE_MODEL") || "gemini-2.5-flash").replace(/^models\//, "");
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+  const response = await fetchGeminiWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -349,11 +364,6 @@ async function callGeminiText(prompt: string): Promise<string> {
       },
     }),
   });
-
-  if (!response.ok) {
-    const details = await response.text().catch(() => "");
-    throw new Error(`Google chat failed: ${response.status}${details ? ` ${details}` : ""}`);
-  }
 
   const data = await response.json();
   return data.candidates
